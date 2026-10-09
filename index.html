@@ -241,6 +241,11 @@ dialog.panel::backdrop { background: rgba(27,53,144,.4); }
 .o-circ .p2 { stroke-width: 2.4; opacity: .6; animation-delay: .62s; }
 .tinta-txt { display: inline-block; filter: url(#rotu); }
 h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spacing: 0; }
+#confirmar-elegido { font-family: var(--serif); font-size: 1.35rem; }
+.confirma-acc { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+#btn-confirmar { background: var(--rojo); }
+#btn-confirmar:hover { background: #A82620; }
+.resultado .boton-claro { margin-right: .5rem; }
 </style>
 </head>
 <body>
@@ -344,11 +349,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
 <dialog id="info" class="panel" aria-labelledby="info-titulo">
     <button class="boton-claro cierra-info modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
     <h2 id="info-titulo" style="margin-bottom:.75rem">Cómo se juega</h2>
-    <p>En cada reto hay una lista de elementos con algo en común, menos uno. Encuentra el que sobra.</p>
-    <ul class="demo" aria-label="Ejemplo: Ebro, Duero, Tajo, Sena, Guadalquivir. Sobra el Sena, que es francés.">
-        <li>Ebro</li><li>Duero</li><li>Tajo</li><li><span class="tachable" style="background-size:100% 3px">Sena</span></li><li>Guadalquivir</li>
-    </ul>
-    <p class="vacio" style="margin-top:.5rem">Ríos de España: el Sena pasa por París.</p>
+    <p>En cada reto hay una lista de elementos con algo en común, menos uno. Encuentra el que sobra. Lo mejor es probarlo: tienes uno de práctica, sencillo, que no cuenta para nada.</p>
     <ol class="pasos">
         <li>Marca el que sobra y pulsa Comprobar. Solo tienes un intento.</li>
         <li>Se tacha el intruso y se explica la conexión.</li>
@@ -360,7 +361,10 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
         <tr><td><strong>Sin pista</strong></td><td>3 puntos</td></tr>
     </table>
     <p>Hay dos retos por semana.</p>
-    <button class="boton cierra-info" type="button">Jugar</button>
+    <div class="confirma-acc" style="margin:0 0 .5rem">
+        <button class="boton" type="button" id="btn-practica">Probar uno de práctica</button>
+        <button class="boton-claro cierra-info" type="button">Ir al reto</button>
+    </div>
     <details>
         <summary>Sobre el proyecto</summary>
         <p style="margin-top:.5rem">Resto cero es un juego de lógica y cultura general. El nombre viene de la división: si encuentras el intruso, no sobra nada. Los retos «De una intersección» parten de un misterio de La Intersección, con enlace directo.</p>
@@ -369,6 +373,16 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
         <summary>Cuenta y datos</summary>
         <p style="margin-top:.5rem">Solo guardamos tu nombre, tus respuestas y tus puntos. El nombre es público en el ranking. Tu código de acceso, en el podio, sirve para recuperar tus puntos desde otro dispositivo.</p>
     </details>
+</dialog>
+
+<dialog id="confirmar" class="panel" aria-labelledby="confirmar-titulo">
+    <h2 id="confirmar-titulo" style="margin-bottom:.75rem">¿Seguro?</h2>
+    <p>Has elegido <strong id="confirmar-elegido"></strong>.</p>
+    <p>Solo tienes un intento y no se puede cambiar después. Repasa qué tienen en común los demás elementos y comprueba que este es de verdad el que se sale.</p>
+    <div class="confirma-acc">
+        <button class="boton-claro" type="button" id="btn-seguir" autofocus>Seguir pensando</button>
+        <button class="boton" type="button" id="btn-confirmar">Sí, es este</button>
+    </div>
 </dialog>
 
 <dialog id="podio" class="panel" aria-labelledby="podio-titulo">
@@ -426,7 +440,12 @@ const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
 
 let db = null;
-const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false };
+const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null };
+const RETO_TUTORIAL = {
+    id: 'tutorial', dificultad: 'con_pista', categoria: 'Ríos de España', misterio_relacionado: null,
+    elementos: ['Ebro', 'Duero', 'Tajo', 'Sena', 'Guadalquivir'], intruso: 3,
+    conexion: 'El Sena es un río francés: pasa por París. Todos los demás atraviesan España.'
+};
 
 /* ───────── Utilidades ───────── */
 function pantalla(nombre) {
@@ -606,6 +625,7 @@ function pintarRanking(filas) {
 }
 
 function elegirReto(id) {
+    S.practica = false;
     S.actual = S.retos.find(r => r.id === id);
     quitarAviso();
     pintarReto();
@@ -632,13 +652,13 @@ function pintarReto() {
     const r = S.actual;
     const nivel = NIVELES[r.dificultad] || NIVELES.con_pista;
 
-    $('#reto-fecha').textContent = fechaLarga(r.fecha);
+    $('#reto-fecha').textContent = S.practica ? 'Reto de práctica' : fechaLarga(r.fecha);
 
     const divisor = $('#divisor-texto');
     const hayCategoria = r.dificultad === 'con_pista' && r.categoria;
     divisor.textContent = hayCategoria ? r.categoria : '?';
     divisor.classList.toggle('es-incognita', !hayCategoria);
-    $('#divisor-nivel').textContent = `${nivel.nombre}. Vale ${plural(nivel.puntos, 'punto', 'puntos')}.`;
+    $('#divisor-nivel').textContent = S.practica ? 'Práctica. No suma puntos.' : `${nivel.nombre}. Vale ${plural(nivel.puntos, 'punto', 'puntos')}.`;
 
     const enlace = $('#divisor-enlace');
     enlace.replaceChildren();
@@ -739,22 +759,65 @@ function pintarResultado(res, nivel, textoIntruso) {
     const explicacion = document.createElement('p');
     explicacion.textContent = res.conexion_intrusa;
     box.replaceChildren(veredicto, explicacion);
-    if (res.acertado) {
+    if (res.acertado && !S.practica) {
         const p = document.createElement('p');
         p.className = 'puntos-ganados';
         p.textContent = `+${plural(nivel.puntos, 'punto', 'puntos')}`;
         box.appendChild(p);
     }
+    if (S.practica) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'boton'; b.textContent = 'Ir al reto de verdad';
+        b.addEventListener('click', salirPractica);
+        box.appendChild(b); box.focus({ preventScroll: true });
+        return;
+    }
     const v = document.createElement('button');
     v.type = 'button'; v.className = 'boton-claro'; v.textContent = 'Ver podio';
     v.addEventListener('click', abrirPodio);
-    box.appendChild(v);
+    const c = document.createElement('button');
+    c.type = 'button'; c.className = 'boton-claro'; c.textContent = 'Compartir';
+    c.addEventListener('click', () => compartir(c));
+    box.append(c, v);
     box.focus({ preventScroll: true });
 }
 
 /* ───────── Acciones ───────── */
-async function comprobar(ev) {
+function empezarPractica() {
+    $('#info').close();
+    S.antes = S.actual ? S.actual.id : null;
+    S.practica = true; S.actual = RETO_TUTORIAL;
+    $('#reto').hidden = false; $('#sin-retos').hidden = true;
+    pintarReto();
+    $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' });
+}
+function salirPractica() {
+    S.practica = false;
+    if (S.retos.length) elegirReto(S.antes || S.retos[0].id);
+    else { S.actual = null; $('#reto').hidden = true; $('#sin-retos').hidden = false; }
+    window.scrollTo({ top: 0, behavior: sinMovimiento() ? 'auto' : 'smooth' });
+}
+function practicar() {
+    const marcado = $('input[name="elem"]:checked');
+    if (!marcado) return;
+    const eleccion = Number(marcado.value);
+    revelar({ acertado: eleccion === RETO_TUTORIAL.intruso, intruso_indice: RETO_TUTORIAL.intruso,
+        conexion_intrusa: RETO_TUTORIAL.conexion }, eleccion, true);
+}
+
+function pedirConfirmacion(ev) {
     ev.preventDefault();
+    if (S.practica) { practicar(); return; }
+    if (!S.token) { abrirModal(); return; }
+    if (S.enviando) return;
+    const marcado = $('input[name="elem"]:checked');
+    if (!marcado) return;
+    $('#confirmar-elegido').textContent = `«${S.actual.elementos[Number(marcado.value)]}»`;
+    $('#confirmar').showModal();
+}
+
+async function comprobar(ev) {
+    if (ev) ev.preventDefault();
     if (!S.token) { abrirModal(); return; }
     if (S.enviando) return;
     const marcado = $('input[name="elem"]:checked');
@@ -839,6 +902,25 @@ async function entrarConCodigo(ev) {
     }
 }
 
+async function compartir(btn) {
+    const r = S.actual, i = S.intentos.get(r.id);
+    if (!i) return;
+    const nivel = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre;
+    const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+    const cuando = r.fecha === hoy ? 'hoy' : `en el reto del ${fechaCorta(r.fecha)}`;
+    const enlace = location.href.split('#')[0];
+    const texto = i.acertado
+        ? `He conseguido un Resto Cero ${cuando} ✅ (${nivel}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
+        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}).\n¿Serías capaz tú?\n${enlace}`;
+    try {
+        if (navigator.share) { await navigator.share({ text: texto }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(texto); }
+    catch (e) { window.prompt('Copia tu resultado:', texto); return; }
+    btn.textContent = 'Copiado';
+    setTimeout(() => { btn.textContent = 'Compartir'; }, 2000);
+}
+
 async function copiarCodigo() {
     try {
         await navigator.clipboard.writeText(S.token);
@@ -860,11 +942,14 @@ function cerrarSesion() {
 function conectarEventos() {
     $('#form-nombre').addEventListener('submit', crearCuenta);
     $('#form-codigo').addEventListener('submit', entrarConCodigo);
-    $('#form-reto').addEventListener('submit', comprobar);
+    $('#form-reto').addEventListener('submit', pedirConfirmacion);
+    $('#btn-seguir').addEventListener('click', () => $('#confirmar').close());
+    $('#btn-confirmar').addEventListener('click', () => { $('#confirmar').close(); comprobar(); });
     $('#btn-copiar').addEventListener('click', copiarCodigo);
     $('#btn-salir').addEventListener('click', cerrarSesion);
     $('#btn-abrir-modal').addEventListener('click', abrirModal);
     $('#btn-info').addEventListener('click', abrirInfo);
+    $('#btn-practica').addEventListener('click', empezarPractica);
     $('#btn-podio').addEventListener('click', abrirPodio);
     $$('.cierra-podio').forEach(b => b.addEventListener('click', cerrarPodio));
     $('#podio').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarPodio(); });
