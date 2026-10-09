@@ -124,7 +124,7 @@ label.etiqueta { font-weight: 600; }
 .item input:focus-visible ~ .marca { outline: 3px solid var(--rojo); outline-offset: 2px; }
 .tachable {
     background: linear-gradient(var(--rojo), var(--rojo)) no-repeat 0 58% / 0% 4px;
-    transition: background-size .45s ease-out;
+    transition: background-size .5s cubic-bezier(.6, 0, .2, 1);
 }
 .item.cerrado { cursor: default; }
 .item.es-intruso .tachable { background-size: 100% 4px; color: var(--grafito); }
@@ -139,12 +139,12 @@ label.etiqueta { font-weight: 600; }
     font: 700 3.5rem/1 var(--serif); color: var(--grafito);
 }
 .resto-cifra svg { position: absolute; left: -14%; top: -12%; width: 128%; height: 124%; overflow: visible; pointer-events: none; }
-.resto-cifra ellipse {
+.resto-cifra path {
     fill: none; stroke: var(--rojo); stroke-width: 3; stroke-linecap: round;
-    stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .6s ease-in-out;
+    stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .8s cubic-bezier(.45,.05,.25,1);
 }
 .resto-cifra.cero { color: var(--tinta); }
-.resto-cifra.cero ellipse { stroke-dashoffset: 0; }
+.resto-cifra.cero path { stroke-dashoffset: 0; }
 .resto-cifra.uno { color: var(--rojo); }
 
 .acciones { grid-area: acciones; padding-top: .5rem; }
@@ -214,15 +214,18 @@ dialog.panel::backdrop { background: rgba(27,53,144,.4); }
 .resultado .boton-claro { margin-top: .5rem; }
 .lema { font-family: var(--mano); font-size: 1.6rem; line-height: 1.1; }
 .o-circ { position: relative; display: inline-block; }
-.o-circ svg { position: absolute; left: -22%; top: 4%; width: 144%; height: 96%; overflow: visible; pointer-events: none; }
-.o-circ ellipse { fill: none; stroke: var(--rojo); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0;
-    animation: trazo .9s .5s ease-in-out backwards; }
+.o-circ svg { position: absolute; left: 50%; top: 58%; width: 1.12em; height: 1.12em; transform: translate(-50%, -50%); overflow: visible; pointer-events: none; }
+.o-circ path { fill: none; stroke: var(--rojo); stroke-width: 3.2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0;
+    animation: trazo 1.1s .5s cubic-bezier(.45,.05,.25,1) backwards; }
 @keyframes trazo { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes sello { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
 .item { font-size: 1.5rem; font-family: var(--serif); }
-.item .texto { padding: 0 .15em; margin: 0 -.15em; }
+.item .texto { padding: 0 .15em; margin: 0 -.15em; border-radius: 3px 7px 4px 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+    background: linear-gradient(transparent 48%, #FFE14D 48%, #FFE14D 90%, transparent 90%) no-repeat 0 0 / 0% 100%;
+    transition: background-size .28s cubic-bezier(.3, .7, .3, 1); }
+.item input:checked ~ .marca { animation: sello .25s ease-out; }
 .item.elegido { background: transparent; }
-.item.elegido .texto { background: linear-gradient(transparent 50%, #FFE14D 50%, #FFE14D 92%, transparent 92%); }
+.item.elegido .texto { background-size: 100% 100%; }
 .divisor-texto { font-size: 1.6rem; }
 .resto-etiqueta { font-family: var(--mano); font-size: 2.2rem; }
 .resto-cifra { font: 700 4.5rem/1 var(--mano); }
@@ -233,12 +236,21 @@ dialog.panel::backdrop { background: rgba(27,53,144,.4); }
 #btn-comprobar { background: var(--rojo); font-size: 1.1rem; padding: .8rem 1.75rem; }
 #btn-comprobar:hover:not(:disabled) { background: #A82620; }
 #btn-comprobar:disabled { background: var(--grafito); }
+.o-circ svg { mix-blend-mode: multiply; }
+.o-circ path, .resto-cifra path { filter: url(#trazo); }
+.o-circ .p2 { stroke-width: 1.5; opacity: .6; animation-delay: .62s; }
 </style>
 </head>
 <body>
 <main class="pagina">
     <header class="cabecera">
-        <h1>Resto cer<span class="o-circ">o<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><ellipse cx="50" cy="50" rx="46" ry="44" pathLength="1" transform="rotate(-8 50 50)"/></svg></span></h1>
+        <h1>Resto cer<span class="o-circ">o<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><defs><filter id="trazo" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="4" result="onda"/>
+<feDisplacementMap in="SourceGraphic" in2="onda" scale="3.2" xChannelSelector="R" yChannelSelector="G" result="borde"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="9" result="grano"/>
+<feColorMatrix in="grano" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -4 2.8" result="huecos"/>
+<feComposite in="borde" in2="huecos" operator="in"/>
+</filter></defs><path pathLength="1" transform="rotate(-24 50 50)" d="M 8 58 C 5 36 30 19 57 19 C 86 19 99 37 94 54 C 89 72 58 84 33 79 C 13 75 5 61 14 44 C 21 31 36 25 49 24"/><path class="p2" pathLength="1" transform="rotate(-21 50 50) translate(-.8 .7)" d="M 9 56 C 6 35 31 21 57 20 C 85 20 98 38 93 55 C 88 71 58 83 34 78 C 15 74 7 61 15 45 C 22 33 37 27 50 26"/></svg></span></h1>
         <p class="lema">Encuentra lo que sobra.</p>
         <div class="cab-links">
             <button class="enlace" type="button" id="btn-info">Cómo se juega</button>
@@ -303,7 +315,7 @@ dialog.panel::backdrop { background: rgba(27,53,144,.4); }
                     <span class="resto-cifra" id="resto-cifra">
                         <span id="resto-valor" aria-hidden="true">?</span>
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                            <ellipse cx="50" cy="50" rx="47" ry="44" pathLength="1" transform="rotate(-7 50 50)"/>
+                            <path pathLength="1" transform="rotate(-10 50 50)" d="M 12 58 C 5 30 30 8 56 8 C 86 8 99 34 90 62 C 82 88 44 97 22 80 C 8 69 8 44 24 30 C 34 22 46 18 58 19"/>
                         </svg>
                     </span>
                 </div>
