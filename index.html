@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resto cero</title>
+<meta name="description" content="Un juego de lógica: en cada reto hay un elemento que no encaja. Encuéntralo. Dos retos por semana.">
+<meta name="theme-color" content="#EDF3F2">
+<style>
+:root {
+    --papel: #EDF3F2;
+    --cuadricula: #C9DDE5;
+    --linea: #9FBFCE;
+    --tinta: #1B3590;
+    --grafito: #4A5160;
+    --rojo: #D1322A;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --celda: 28px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background-color: var(--papel);
+    background-image:
+        linear-gradient(var(--cuadricula) 1px, transparent 1px),
+        linear-gradient(90deg, var(--cuadricula) 1px, transparent 1px);
+    background-size: var(--celda) var(--celda);
+    color: var(--tinta);
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+.pagina { max-width: 38rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+[hidden] { display: none !important; }
+.solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+h1, h2 { font-family: var(--serif); margin: 0; line-height: 1.1; }
+h1 { font-size: clamp(2.5rem, 11vw, 3.5rem); letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; }
+p { margin: 0 0 .75rem; }
+.lema { color: var(--grafito); margin-top: .35rem; }
+.cabecera { margin-bottom: 1.5rem; }
+
+a { color: var(--tinta); text-underline-offset: .2em; }
+a:hover { text-decoration-thickness: 2px; }
+button, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible {
+    outline: 3px solid var(--rojo); outline-offset: 2px;
+}
+
+.boton {
+    background: var(--tinta); color: var(--papel); border: 0; border-radius: 3px;
+    padding: .7rem 1.25rem; font-weight: 600; cursor: pointer; min-height: 44px;
+}
+.boton:hover:not(:disabled) { background: #14286F; }
+.boton:disabled { background: var(--grafito); opacity: .45; cursor: not-allowed; }
+.boton-claro {
+    background: transparent; color: var(--tinta); border: 2px solid var(--tinta); border-radius: 3px;
+    padding: .5rem 1rem; font-weight: 600; cursor: pointer; min-height: 44px;
+}
+.boton-claro:hover { background: rgba(27, 53, 144, .08); }
+
+.campo { display: block; width: 100%; margin: .25rem 0 1rem; padding: .65rem .75rem;
+    background: var(--papel); border: 2px solid var(--tinta); border-radius: 3px; min-height: 44px; }
+label.etiqueta { font-weight: 600; }
+
+.aviso { padding: .75rem 1rem; margin-bottom: 1rem; background: var(--papel);
+    border-left: 4px solid var(--rojo); color: var(--rojo); font-weight: 600; }
+.aviso-ok { border-left-color: var(--tinta); color: var(--tinta); }
+
+/* ───────── Cuenta ───────── */
+.cuenta { margin-bottom: 2rem; background: var(--papel); border: 1px solid var(--linea); border-radius: 3px; }
+.cuenta summary { cursor: pointer; padding: .65rem 1rem; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.cuenta-cuerpo { padding: 0 1rem 1rem; }
+.cuenta-cuerpo .acciones-fila { display: flex; flex-wrap: wrap; gap: .75rem; }
+
+/* ───────── Entrada ───────── */
+.entrada h2 { margin-bottom: .75rem; }
+.entrada details { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--linea); }
+.entrada summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+
+/* ───────── El reto: una división a la española ───────── */
+.reto-fecha { margin-bottom: .5rem; }
+.instruccion { color: var(--grafito); max-width: 34rem; }
+
+.galera {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, 40%);
+    grid-template-areas:
+        "dividendo divisor"
+        "resto     resto"
+        "acciones  acciones";
+    margin-top: 1.25rem;
+}
+.dividendo { grid-area: dividendo; border: 0; margin: 0; padding: 0; min-width: 0;
+    border-right: 2px solid var(--tinta); border-bottom: 2px solid var(--tinta); }
+.divisor { grid-area: divisor; padding-left: 1rem; min-width: 0; }
+.divisor-texto {
+    margin: 0; padding: .35rem 0 .5rem; border-bottom: 2px solid var(--tinta);
+    font-family: var(--serif); font-size: 1.35rem; line-height: 1.2; overflow-wrap: anywhere;
+}
+.divisor-texto.es-incognita { font-size: 2.25rem; color: var(--grafito); }
+.divisor-nivel { margin: .6rem 0 .5rem; color: var(--grafito); font-size: .95rem; }
+.divisor-enlace { font-size: .95rem; }
+
+.item {
+    display: flex; align-items: center; gap: .85rem;
+    min-height: calc(var(--celda) * 2); padding: .25rem .75rem .25rem .1rem;
+    font-size: 1.125rem; cursor: pointer; position: relative;
+}
+.item:hover:not(.cerrado) { background: rgba(27, 53, 144, .07); }
+.item.elegido { background: rgba(27, 53, 144, .12); }
+.item input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.marca {
+    flex: none; width: 20px; height: 20px; border: 2px solid var(--tinta); border-radius: 50%;
+    display: grid; place-items: center; font-size: .8rem; line-height: 1; font-weight: 700;
+}
+.item input:checked ~ .marca { background: var(--tinta); box-shadow: inset 0 0 0 3px var(--papel); }
+.item input:focus-visible ~ .marca { outline: 3px solid var(--rojo); outline-offset: 2px; }
+.tachable {
+    background: linear-gradient(var(--rojo), var(--rojo)) no-repeat 0 58% / 0% 3px;
+    transition: background-size .45s ease-out;
+}
+.item.cerrado { cursor: default; }
+.item.es-intruso .tachable { background-size: 100% 3px; color: var(--grafito); }
+.item.es-intruso .marca { border-color: var(--rojo); }
+.item.elegido-mal .marca { border-color: var(--rojo); color: var(--rojo); background: transparent; box-shadow: none; }
+.item.elegido-mal .marca::after { content: "\2715"; }
+
+.resto { grid-area: resto; display: flex; align-items: center; gap: 1.25rem; padding: 1rem 0 .5rem; }
+.resto-etiqueta { font-family: var(--serif); font-size: 1.35rem; }
+.resto-cifra {
+    position: relative; display: inline-grid; place-items: center; min-width: 1.9em; padding: .05em .3em;
+    font: 700 3.5rem/1 var(--serif); color: var(--grafito);
+}
+.resto-cifra svg { position: absolute; left: -14%; top: -12%; width: 128%; height: 124%; overflow: visible; pointer-events: none; }
+.resto-cifra ellipse {
+    fill: none; stroke: var(--rojo); stroke-width: 3; stroke-linecap: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .6s ease-in-out;
+}
+.resto-cifra.cero { color: var(--tinta); }
+.resto-cifra.cero ellipse { stroke-dashoffset: 0; }
+.resto-cifra.uno { color: var(--rojo); }
+
+.acciones { grid-area: acciones; padding-top: .5rem; }
+
+.resultado { margin-top: 1rem; max-width: 34rem; outline: none; }
+.resultado > * { opacity: 0; transition: opacity .4s ease-out; }
+.resultado.visible > * { opacity: 1; }
+.veredicto { font-family: var(--serif); font-size: 1.5rem; line-height: 1.2; margin-bottom: .5rem; }
+.puntos-ganados { font-weight: 700; }
+
+@media (max-width: 32rem) {
+    .galera {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "divisor" "dividendo" "resto" "acciones";
+    }
+    .divisor { padding-left: 0; margin-bottom: .5rem; }
+    .dividendo { border-right: 0; border-top: 2px solid var(--tinta); }
+}
+
+/* ───────── Listas: otros retos y ranking ───────── */
+.seccion { margin-top: 3rem; }
+.seccion h2 { margin-bottom: .75rem; }
+.fila {
+    display: flex; align-items: baseline; gap: 1rem; width: 100%; text-align: left;
+    background: transparent; border: 0; border-bottom: 1px solid var(--linea); padding: .75rem .25rem;
+    cursor: pointer; min-height: 44px;
+}
+.fila:hover { background: rgba(27, 53, 144, .07); }
+.fila-fecha { font-weight: 600; min-width: 5.5rem; }
+.fila-nivel { flex: 1; color: var(--grafito); }
+.fila-estado { font-weight: 600; }
+
+.ranking { list-style: none; margin: 0; padding: 0; counter-reset: pos; }
+.ranking li { counter-increment: pos; display: flex; align-items: baseline; gap: 1rem;
+    padding: .65rem .25rem; border-bottom: 1px solid var(--linea); }
+.ranking li::before { content: counter(pos); font-family: var(--serif); font-size: 1.35rem; font-weight: 700; min-width: 1.75rem; }
+.ranking .nombre { flex: 1; overflow-wrap: anywhere; }
+.vacio { color: var(--grafito); max-width: 30rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+    .resultado > * { opacity: 1; }
+}
+</style>
+</head>
+<body>
+<main class="pagina">
+    <header class="cabecera">
+        <h1>Resto cero</h1>
+        <p class="lema">Encuentra lo que sobra.</p>
+    </header>
+
+    <p id="aviso" class="aviso" role="status" aria-live="polite" hidden></p>
+    <noscript><p class="aviso">Necesitas activar JavaScript para jugar.</p></noscript>
+
+    <!-- Falta configurar Supabase -->
+    <section id="pantalla-config" hidden>
+        <h2>Falta un último paso</h2>
+        <p id="config-msg">Abre este archivo, busca <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> al principio del script, y pon los datos de tu proyecto de Supabase.</p>
+    </section>
+
+    <!-- Entrada: crear cuenta o volver a entrar -->
+    <section id="pantalla-entrada" class="entrada" hidden>
+        <h2>¿Cómo te llamas?</h2>
+        <p>Solo hace falta un nombre. Es el que verán los demás en el ranking.</p>
+        <form id="form-nombre">
+            <label class="etiqueta" for="nombre">Tu nombre</label>
+            <input class="campo" id="nombre" name="nombre" type="text" maxlength="30" autocomplete="nickname" required>
+            <button class="boton" type="submit" id="btn-crear">Empezar a jugar</button>
+        </form>
+        <!-- TODO: aquí irá el botón «Importar de La Intersección» (necesita la Edge Function que consulta el Apps Script) -->
+        <details>
+            <summary>Ya tengo una cuenta</summary>
+            <p style="margin-top:.75rem">Pega el código de acceso que guardaste.</p>
+            <form id="form-codigo">
+                <label class="etiqueta" for="codigo">Código de acceso</label>
+                <input class="campo" id="codigo" name="codigo" type="text" autocomplete="off" spellcheck="false">
+                <button class="boton-claro" type="submit" id="btn-entrar">Entrar</button>
+            </form>
+        </details>
+    </section>
+
+    <!-- Juego -->
+    <div id="pantalla-juego" hidden>
+        <details class="cuenta">
+            <summary id="cuenta-resumen"></summary>
+            <div class="cuenta-cuerpo">
+                <p>Tu código de acceso te permite volver a entrar desde otro dispositivo o si borras los datos del navegador. Guárdalo en un sitio seguro.</p>
+                <div class="acciones-fila">
+                    <button class="boton-claro" type="button" id="btn-copiar">Copiar código</button>
+                    <button class="boton-claro" type="button" id="btn-salir">Cerrar sesión</button>
+                </div>
+            </div>
+        </details>
+
+        <section id="reto" aria-labelledby="reto-fecha">
+            <h2 id="reto-fecha" class="reto-fecha"></h2>
+            <p class="instruccion">Hay un elemento que no encaja con los demás. Márcalo y pulsa Comprobar. Solo tienes un intento.</p>
+
+            <form id="form-reto" class="galera" novalidate>
+                <fieldset class="dividendo">
+                    <legend class="solo-lectores">Elementos del reto. Marca el que sobra.</legend>
+                    <div id="elementos"></div>
+                </fieldset>
+                <div class="divisor">
+                    <p class="divisor-texto" id="divisor-texto"></p>
+                    <p class="divisor-nivel" id="divisor-nivel"></p>
+                    <p class="divisor-enlace" id="divisor-enlace" hidden></p>
+                </div>
+                <div class="resto">
+                    <span class="resto-etiqueta">Resto</span>
+                    <span class="resto-cifra" id="resto-cifra">
+                        <span id="resto-valor" aria-hidden="true">?</span>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                            <ellipse cx="50" cy="50" rx="47" ry="44" pathLength="1" transform="rotate(-7 50 50)"/>
+                        </svg>
+                    </span>
+                </div>
+                <div class="acciones">
+                    <button class="boton" type="submit" id="btn-comprobar" disabled>Comprobar</button>
+                </div>
+            </form>
+
+            <div class="resultado" id="resultado" tabindex="-1" aria-live="polite"></div>
+        </section>
+
+        <p id="sin-retos" class="vacio" hidden>Todavía no hay ningún reto publicado. Vuelve pronto.</p>
+
+        <section class="seccion" id="otros" hidden>
+            <h2>Otros retos</h2>
+            <div id="lista-otros"></div>
+        </section>
+
+        <section class="seccion">
+            <h2>Ranking</h2>
+            <ol class="ranking" id="ranking"></ol>
+            <p class="vacio" id="ranking-vacio" hidden>Todavía no hay nadie en el ranking. El primer acierto se lleva el primer puesto.</p>
+        </section>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script>
+(() => {
+'use strict';
+
+// ══════════════ CONFIGURACIÓN: rellena estas dos líneas ══════════════
+// Las encuentras en Supabase > Project Settings > API.
+// La clave "anon" es pública por diseño: la seguridad real la ponen las
+// reglas de la base de datos (schema.sql), no el secreto de esta clave.
+const SUPABASE_URL      = 'https://ftynghmsnqlogsjxkdmb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_GNmo7EAon_As0jD5GT-0bg_0pU5sm6x';
+const INTERSECCION_URL  = 'https://interseccion.github.io/';
+// ═════════════════════════════════════════════════════════════════════
+
+const CLAVE_TOKEN = 'restocero_token';
+const NIVELES = {
+    con_pista:    { nombre: 'Con pista',           puntos: 1 },
+    interseccion: { nombre: 'De una intersección', puntos: 2 },
+    sin_pista:    { nombre: 'Sin pista',           puntos: 3 }
+};
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
+
+let db = null;
+const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false };
+
+/* ───────── Utilidades ───────── */
+function pantalla(nombre) {
+    ['config', 'entrada', 'juego'].forEach(n => { $('#pantalla-' + n).hidden = (n !== nombre); });
+}
+
+let temporizadorAviso;
+function avisar(texto, tipo = 'error') {
+    const a = $('#aviso');
+    a.textContent = texto;
+    a.className = 'aviso aviso-' + tipo;
+    a.hidden = false;
+    clearTimeout(temporizadorAviso);
+    temporizadorAviso = setTimeout(() => { a.hidden = true; }, 9000);
+}
+function quitarAviso() { $('#aviso').hidden = true; }
+
+function guardarToken(t) { try { localStorage.setItem(CLAVE_TOKEN, t); } catch (e) { /* navegación privada */ } }
+function leerToken() { try { return localStorage.getItem(CLAVE_TOKEN); } catch (e) { return null; } }
+function borrarToken() { try { localStorage.removeItem(CLAVE_TOKEN); } catch (e) { /* nada */ } }
+
+function mensajeError(e) {
+    const m = (e && e.message) || '';
+    if (/Token no válido/.test(m)) return 'Tu sesión ya no es válida. Entra de nuevo con tu código.';
+    if (/Reto no encontrado/.test(m)) return 'Ese reto ya no está disponible.';
+    if (/nombre/i.test(m)) return m;
+    return 'No se ha podido conectar. Inténtalo de nuevo en un momento.';
+}
+
+function fechaLarga(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    return mayus(d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }));
+}
+function fechaCorta(iso) {
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+}
+
+async function rpc(nombre, args) {
+    const { data, error } = await db.rpc(nombre, args);
+    if (error) throw error;
+    return data;
+}
+async function leer(tabla, ajustar) {
+    let q = db.from(tabla).select('*');
+    if (ajustar) q = ajustar(q);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+}
+
+/* ───────── Arranque ───────── */
+async function iniciar() {
+    conectarEventos();
+    if (!window.supabase) {
+        pantalla('config');
+        $('#config-msg').textContent = 'No se ha podido cargar la librería de Supabase. Si usas un bloqueador de contenido, prueba a desactivarlo en esta página.';
+        return;
+    }
+    if (/TU-PROYECTO|TU-CLAVE/.test(SUPABASE_URL + SUPABASE_ANON_KEY)) { pantalla('config'); return; }
+
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    });
+
+    S.token = leerToken();
+    if (!S.token) { pantalla('entrada'); return; }
+    try {
+        await entrarAlJuego();
+    } catch (e) {
+        pantalla('entrada');
+        avisar(mensajeError(e));
+    }
+}
+
+async function entrarAlJuego() {
+    const [perfil, retos, intentos, ranking] = await Promise.all([
+        rpc('mi_perfil', { p_token: S.token }),
+        leer('retos_publico', q => q.order('fecha', { ascending: false })),
+        rpc('mis_intentos', { p_token: S.token }),
+        leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10))
+    ]);
+
+    if (!perfil.length) {
+        borrarToken(); S.token = null;
+        pantalla('entrada');
+        avisar('Tu sesión ya no es válida. Entra de nuevo con tu código o crea una cuenta.');
+        return;
+    }
+
+    S.perfil = perfil[0];
+    S.retos = retos;
+    S.intentos = new Map(intentos.map(i => [i.reto_id, i]));
+    pantalla('juego');
+    pintarCuenta();
+    pintarRanking(ranking);
+
+    $('#sin-retos').hidden = retos.length > 0;
+    $('#reto').hidden = retos.length === 0;
+    if (retos.length) {
+        const pendiente = retos.find(r => !S.intentos.has(r.id));
+        elegirReto((pendiente || retos[0]).id);
+    } else {
+        $('#otros').hidden = true;
+    }
+}
+
+/* ───────── Pintar ───────── */
+function pintarCuenta() {
+    $('#cuenta-resumen').textContent = `${S.perfil.nombre}, ${plural(S.perfil.puntos_totales, 'punto', 'puntos')}`;
+}
+
+function pintarRanking(filas) {
+    const ol = $('#ranking');
+    ol.replaceChildren(...filas.map(f => {
+        const li = document.createElement('li');
+        const nombre = document.createElement('span');
+        nombre.className = 'nombre';
+        nombre.textContent = f.nombre;
+        const pts = document.createElement('span');
+        pts.textContent = plural(f.puntos_totales, 'punto', 'puntos');
+        li.append(nombre, pts);
+        return li;
+    }));
+    $('#ranking-vacio').hidden = filas.length > 0;
+}
+
+function elegirReto(id) {
+    S.actual = S.retos.find(r => r.id === id);
+    quitarAviso();
+    pintarReto();
+    pintarOtros();
+}
+
+function crearItem(texto, i) {
+    const label = document.createElement('label');
+    label.className = 'item';
+    const input = document.createElement('input');
+    input.type = 'radio'; input.name = 'elem'; input.value = String(i);
+    const marca = document.createElement('span');
+    marca.className = 'marca'; marca.setAttribute('aria-hidden', 'true');
+    const t = document.createElement('span');
+    const tachable = document.createElement('span');
+    tachable.className = 'tachable'; tachable.textContent = texto;
+    t.appendChild(tachable);
+    label.append(input, marca, t);
+    return label;
+}
+
+function pintarReto() {
+    const r = S.actual;
+    const nivel = NIVELES[r.dificultad] || NIVELES.con_pista;
+
+    $('#reto-fecha').textContent = fechaLarga(r.fecha);
+
+    const divisor = $('#divisor-texto');
+    const hayCategoria = r.dificultad === 'con_pista' && r.categoria;
+    divisor.textContent = hayCategoria ? r.categoria : '?';
+    divisor.classList.toggle('es-incognita', !hayCategoria);
+    $('#divisor-nivel').textContent = `${nivel.nombre}. Vale ${plural(nivel.puntos, 'punto', 'puntos')}.`;
+
+    const enlace = $('#divisor-enlace');
+    enlace.replaceChildren();
+    if (r.dificultad === 'interseccion' && r.misterio_relacionado) {
+        const a = document.createElement('a');
+        a.href = `${INTERSECCION_URL}#mystery=${encodeURIComponent(r.misterio_relacionado)}`;
+        a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = 'Abrir el misterio en La Intersección';
+        enlace.appendChild(a);
+        enlace.hidden = false;
+    } else {
+        enlace.hidden = true;
+    }
+
+    $('#elementos').replaceChildren(...r.elementos.map(crearItem));
+
+    // Estado inicial limpio
+    const cifra = $('#resto-cifra');
+    cifra.className = 'resto-cifra';
+    $('#resto-valor').textContent = '?';
+    const res = $('#resultado');
+    res.replaceChildren(); res.classList.remove('visible');
+    const btn = $('#btn-comprobar');
+    btn.hidden = false; btn.disabled = true; btn.textContent = 'Comprobar';
+
+    const previo = S.intentos.get(r.id);
+    if (previo) {
+        revelar({
+            acertado: previo.acertado,
+            intruso_indice: previo.intruso_indice,
+            conexion_intrusa: previo.conexion_intrusa
+        }, previo.eleccion_indice, false);
+    }
+}
+
+function pintarOtros() {
+    const otros = S.retos.filter(r => r.id !== S.actual.id);
+    $('#otros').hidden = otros.length === 0;
+    $('#lista-otros').replaceChildren(...otros.map(r => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'fila';
+        const f = document.createElement('span'); f.className = 'fila-fecha'; f.textContent = fechaCorta(r.fecha);
+        const n = document.createElement('span'); n.className = 'fila-nivel'; n.textContent = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre;
+        const e = document.createElement('span'); e.className = 'fila-estado';
+        const i = S.intentos.get(r.id);
+        e.textContent = i ? (i.acertado ? 'Acertado' : 'Fallado') : 'Sin responder';
+        b.append(f, n, e);
+        b.addEventListener('click', () => { elegirReto(r.id); $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' }); });
+        return b;
+    }));
+}
+
+/* ───────── El momento: revelar el resto ───────── */
+function revelar(res, eleccion, animar) {
+    const nivel = NIVELES[S.actual.dificultad] || NIVELES.con_pista;
+    const items = $$('.item');
+    const rapido = !animar || sinMovimiento();
+    items.forEach(it => { it.classList.add('cerrado'); $('input', it).disabled = true; });
+    $('#btn-comprobar').hidden = true;
+
+    const intruso = items[res.intruso_indice];
+    const elegido = items[eleccion];
+    const textoIntruso = S.actual.elementos[res.intruso_indice];
+
+    const fase1 = () => {
+        if (intruso) intruso.classList.add('es-intruso');
+        if (!res.acertado && elegido) elegido.classList.add('elegido-mal');
+        $('#resto-valor').textContent = '1';
+        $('#resto-cifra').classList.add('uno');
+    };
+    const fase2 = () => {
+        const cifra = $('#resto-cifra');
+        cifra.classList.remove('uno');
+        if (res.acertado) { $('#resto-valor').textContent = '0'; cifra.classList.add('cero'); }
+        else { cifra.classList.add('uno'); }
+        pintarResultado(res, nivel, textoIntruso);
+    };
+
+    if (rapido) {
+        fase1(); fase2();
+        $('#resultado').classList.add('visible');
+    } else {
+        fase1();
+        setTimeout(() => {
+            fase2();
+            requestAnimationFrame(() => $('#resultado').classList.add('visible'));
+        }, 650);
+    }
+}
+
+function pintarResultado(res, nivel, textoIntruso) {
+    const box = $('#resultado');
+    const veredicto = document.createElement('p');
+    veredicto.className = 'veredicto';
+    veredicto.textContent = res.acertado
+        ? 'Resto cero. Lo has encontrado.'
+        : `Todavía sobra algo. El intruso era «${textoIntruso}».`;
+    const explicacion = document.createElement('p');
+    explicacion.textContent = res.conexion_intrusa;
+    box.replaceChildren(veredicto, explicacion);
+    if (res.acertado) {
+        const p = document.createElement('p');
+        p.className = 'puntos-ganados';
+        p.textContent = `+${plural(nivel.puntos, 'punto', 'puntos')}`;
+        box.appendChild(p);
+    }
+    box.focus({ preventScroll: true });
+}
+
+/* ───────── Acciones ───────── */
+async function comprobar(ev) {
+    ev.preventDefault();
+    if (S.enviando) return;
+    const marcado = $('input[name="elem"]:checked');
+    if (!marcado) return;
+
+    const eleccion = Number(marcado.value);
+    const btn = $('#btn-comprobar');
+    S.enviando = true; btn.disabled = true; btn.textContent = 'Comprobando...';
+    try {
+        const [res] = await rpc('validar_respuesta', {
+            p_token: S.token, p_reto_id: S.actual.id, p_eleccion_indice: eleccion
+        });
+
+        if (res.ya_respondido) {
+            // Ya lo habías respondido (otra pestaña u otro dispositivo): se recarga lo guardado.
+            const ints = await rpc('mis_intentos', { p_token: S.token });
+            S.intentos = new Map(ints.map(i => [i.reto_id, i]));
+            pintarReto(); pintarOtros();
+            avisar('Ya habías respondido este reto. Te mostramos tu respuesta guardada.', 'ok');
+            return;
+        }
+
+        S.intentos.set(S.actual.id, {
+            reto_id: S.actual.id, eleccion_indice: eleccion, acertado: res.acertado,
+            intruso_indice: res.intruso_indice, conexion_intrusa: res.conexion_intrusa
+        });
+        S.perfil.puntos_totales = res.puntos_totales;
+        pintarCuenta();
+        revelar(res, eleccion, true);
+        pintarOtros();
+
+        leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10))
+            .then(pintarRanking).catch(() => { /* el ranking se actualizará la próxima vez */ });
+    } catch (e) {
+        avisar(mensajeError(e));
+        btn.disabled = false; btn.textContent = 'Comprobar';
+    } finally {
+        S.enviando = false;
+    }
+}
+
+async function crearCuenta(ev) {
+    ev.preventDefault();
+    const nombre = $('#nombre').value.trim();
+    if (!nombre) { avisar('Escribe un nombre para continuar.'); return; }
+    const btn = $('#btn-crear');
+    btn.disabled = true;
+    try {
+        const [fila] = await rpc('crear_jugador', { p_nombre: nombre });
+        S.token = fila.token; guardarToken(fila.token);
+        quitarAviso();
+        await entrarAlJuego();
+    } catch (e) {
+        avisar(mensajeError(e));
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function entrarConCodigo(ev) {
+    ev.preventDefault();
+    const codigo = $('#codigo').value.trim();
+    if (!codigo) { avisar('Pega tu código de acceso.'); return; }
+    const btn = $('#btn-entrar');
+    btn.disabled = true;
+    try {
+        S.token = codigo;
+        const perfil = await rpc('mi_perfil', { p_token: codigo });
+        if (!perfil.length) {
+            S.token = null;
+            avisar('Ese código no corresponde a ninguna cuenta. Comprueba que lo has copiado entero.');
+            return;
+        }
+        guardarToken(codigo);
+        quitarAviso();
+        await entrarAlJuego();
+    } catch (e) {
+        S.token = null;
+        avisar(mensajeError(e));
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function copiarCodigo() {
+    try {
+        await navigator.clipboard.writeText(S.token);
+        avisar('Código copiado.', 'ok');
+    } catch (e) {
+        window.prompt('Copia tu código de acceso:', S.token);
+    }
+}
+
+function cerrarSesion() {
+    if (!window.confirm('¿Cerrar sesión? Si no has guardado tu código de acceso, no podrás recuperar esta cuenta.')) return;
+    borrarToken();
+    S.token = null; S.perfil = null; S.intentos = new Map();
+    pantalla('entrada');
+}
+
+function conectarEventos() {
+    $('#form-nombre').addEventListener('submit', crearCuenta);
+    $('#form-codigo').addEventListener('submit', entrarConCodigo);
+    $('#form-reto').addEventListener('submit', comprobar);
+    $('#btn-copiar').addEventListener('click', copiarCodigo);
+    $('#btn-salir').addEventListener('click', cerrarSesion);
+    $('#elementos').addEventListener('change', () => {
+        $$('.item').forEach(it => it.classList.toggle('elegido', $('input', it).checked));
+        $('#btn-comprobar').disabled = !$('input[name="elem"]:checked') || S.enviando;
+    });
+}
+
+iniciar();
+})();
+</script>
+</body>
+</html>
