@@ -6,7 +6,9 @@
 <title>Resto cero</title>
 <meta name="description" content="Un juego de lógica: en cada reto hay un elemento que no encaja. Encuéntralo. Dos retos por semana.">
 <meta name="theme-color" content="#EDF3F2">
+<link rel="preload" href="fonts/caveat-700.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+@font-face { font-family: "Caveat"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/caveat-700.woff2") format("woff2"); }
 :root {
     --papel: #EDF3F2;
     --cuadricula: #C9DDE5;
@@ -15,6 +17,7 @@
     --grafito: #4A5160;
     --rojo: #D1322A;
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mano: "Caveat", "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --celda: 28px;
 }
@@ -37,7 +40,7 @@ body {
 .solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 h1, h2 { font-family: var(--serif); margin: 0; line-height: 1.1; }
-h1 { font-size: clamp(2.5rem, 11vw, 3.5rem); letter-spacing: -0.02em; }
+h1 { font-size: clamp(3rem, 15vw, 4.75rem); letter-spacing: -0.02em; }
 h2 { font-size: 1.5rem; }
 p { margin: 0 0 .75rem; }
 .lema { color: var(--grafito); margin-top: .35rem; }
@@ -120,11 +123,11 @@ label.etiqueta { font-weight: 600; }
 .item input:checked ~ .marca { background: var(--tinta); box-shadow: inset 0 0 0 3px var(--papel); }
 .item input:focus-visible ~ .marca { outline: 3px solid var(--rojo); outline-offset: 2px; }
 .tachable {
-    background: linear-gradient(var(--rojo), var(--rojo)) no-repeat 0 58% / 0% 3px;
+    background: linear-gradient(var(--rojo), var(--rojo)) no-repeat 0 58% / 0% 4px;
     transition: background-size .45s ease-out;
 }
 .item.cerrado { cursor: default; }
-.item.es-intruso .tachable { background-size: 100% 3px; color: var(--grafito); }
+.item.es-intruso .tachable { background-size: 100% 4px; color: var(--grafito); }
 .item.es-intruso .marca { border-color: var(--rojo); }
 .item.elegido-mal .marca { border-color: var(--rojo); color: var(--rojo); background: transparent; box-shadow: none; }
 .item.elegido-mal .marca::after { content: "\2715"; }
@@ -185,14 +188,65 @@ label.etiqueta { font-weight: 600; }
     * { transition: none !important; animation: none !important; }
     .resultado > * { opacity: 1; }
 }
+
+.demo { list-style: none; margin: .75rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; font-size: 1.125rem; }
+.pasos { margin: 0 0 1rem; padding-left: 1.25rem; }
+.pasos li { margin-bottom: .5rem; }
+.tabla-puntos { border-collapse: collapse; margin: .5rem 0 1rem; }
+.tabla-puntos td { padding: .5rem 1rem .5rem 0; border-bottom: 1px solid var(--linea); }
+.cab-links { display: flex; flex-wrap: wrap; gap: 0 1.25rem; margin-top: .25rem; }
+.enlace { background: none; border: 0; padding: .5rem 0; min-height: 44px; font-weight: 600; color: var(--tinta);
+    text-decoration: underline; text-underline-offset: .2em; cursor: pointer; }
+.enlace:hover { text-decoration-thickness: 2px; }
+dialog.panel details { margin-top: 1rem; padding-top: .25rem; border-top: 1px solid var(--linea); }
+dialog.panel summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+dialog.panel { border: 2px solid var(--tinta); border-radius: 3px; background: var(--papel); color: var(--tinta);
+    padding: 1.5rem 1.25rem; width: min(30rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); overflow: auto; }
+dialog.panel::backdrop { background: rgba(27,53,144,.4); }
+.modal-x { float: right; min-width: 44px; padding: .25rem; margin: -.5rem -.5rem 0 .5rem; }
+#form-nombre .boton-claro { margin-left: .5rem; }
+.panel h3 { font-family: var(--serif); font-size: 1.2rem; margin: 1.5rem 0 .5rem; }
+.stats { display: flex; gap: 1.75rem; margin: .5rem 0 0; }
+.stats p { margin: 0; display: flex; flex-direction: column; }
+.stats strong { font: 700 1.9rem/1.1 var(--serif); }
+.stats span { color: var(--grafito); font-size: .95rem; }
+.panel .cuenta { margin: 1.5rem 0 0; border: 1px solid var(--linea); }
+.resultado .boton-claro { margin-top: .5rem; }
+.lema { font-family: var(--mano); font-size: 1.6rem; line-height: 1.1; }
+.o-circ { position: relative; display: inline-block; }
+.o-circ svg { position: absolute; left: -22%; top: 4%; width: 144%; height: 96%; overflow: visible; pointer-events: none; }
+.o-circ ellipse { fill: none; stroke: var(--rojo); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0;
+    animation: trazo .9s .5s ease-in-out backwards; }
+@keyframes trazo { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sello { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
+.item { font-size: 1.5rem; font-family: var(--serif); }
+.item .texto { padding: 0 .15em; margin: 0 -.15em; }
+.item.elegido { background: transparent; }
+.item.elegido .texto { background: linear-gradient(transparent 50%, #FFE14D 50%, #FFE14D 92%, transparent 92%); }
+.divisor-texto { font-size: 1.6rem; }
+.resto-etiqueta { font-family: var(--mano); font-size: 2.2rem; }
+.resto-cifra { font: 700 4.5rem/1 var(--mano); }
+.resto-cifra.cero, .resto-cifra.uno { animation: sello .4s ease-out; }
+.veredicto { font-family: var(--mano); font-size: 2.3rem; line-height: 1.05; }
+.veredicto.ok { color: var(--tinta); }
+.veredicto.mal { color: var(--rojo); }
+#btn-comprobar { background: var(--rojo); font-size: 1.1rem; padding: .8rem 1.75rem; }
+#btn-comprobar:hover:not(:disabled) { background: #A82620; }
+#btn-comprobar:disabled { background: var(--grafito); }
 </style>
 </head>
 <body>
 <main class="pagina">
     <header class="cabecera">
-        <h1>Resto cero</h1>
+        <h1>Resto cer<span class="o-circ">o<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><ellipse cx="50" cy="50" rx="46" ry="44" pathLength="1" transform="rotate(-8 50 50)"/></svg></span></h1>
         <p class="lema">Encuentra lo que sobra.</p>
+        <div class="cab-links">
+            <button class="enlace" type="button" id="btn-info">Cómo se juega</button>
+            <button class="enlace" type="button" id="btn-podio">Podio</button>
+            <button class="enlace" type="button" id="btn-abrir-modal" hidden>Crear cuenta o entrar</button>
+        </div>
     </header>
+
 
     <p id="aviso" class="aviso" role="status" aria-live="polite" hidden></p>
     <noscript><p class="aviso">Necesitas activar JavaScript para jugar.</p></noscript>
@@ -203,39 +257,32 @@ label.etiqueta { font-weight: 600; }
         <p id="config-msg">Abre este archivo, busca <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> al principio del script, y pon los datos de tu proyecto de Supabase.</p>
     </section>
 
-    <!-- Entrada: crear cuenta o volver a entrar -->
-    <section id="pantalla-entrada" class="entrada" hidden>
-        <h2>¿Cómo te llamas?</h2>
-        <p>Solo hace falta un nombre. Es el que verán los demás en el ranking.</p>
-        <form id="form-nombre">
-            <label class="etiqueta" for="nombre">Tu nombre</label>
-            <input class="campo" id="nombre" name="nombre" type="text" maxlength="30" autocomplete="nickname" required>
-            <button class="boton" type="submit" id="btn-crear">Empezar a jugar</button>
-        </form>
-        <!-- TODO: aquí irá el botón «Importar de La Intersección» (necesita la Edge Function que consulta el Apps Script) -->
-        <details>
-            <summary>Ya tengo una cuenta</summary>
-            <p style="margin-top:.75rem">Pega el código de acceso que guardaste.</p>
-            <form id="form-codigo">
-                <label class="etiqueta" for="codigo">Código de acceso</label>
-                <input class="campo" id="codigo" name="codigo" type="text" autocomplete="off" spellcheck="false">
-                <button class="boton-claro" type="submit" id="btn-entrar">Entrar</button>
+    <dialog id="modal" class="panel" aria-labelledby="modal-titulo">
+        <div class="entrada">
+            <button class="boton-claro cierra-modal modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
+            <h2 id="modal-titulo">Elige un nombre</h2>
+            <p>Es el que saldrá en el ranking. Sin cuenta puedes ver los retos, pero no responderlos.</p>
+            <p id="aviso-modal" class="aviso" role="status" aria-live="polite" hidden></p>
+            <form id="form-nombre">
+                <label class="etiqueta" for="nombre">Tu nombre</label>
+                <input class="campo" id="nombre" name="nombre" type="text" maxlength="30" autocomplete="nickname" autofocus>
+                <button class="boton" type="submit" id="btn-crear">Empezar a jugar</button>
+                <button class="boton-claro cierra-modal" type="button">Ahora no</button>
             </form>
-        </details>
-    </section>
+            <details>
+                <summary>Ya tengo una cuenta</summary>
+                <p style="margin-top:.75rem">Pega el código de acceso que guardaste.</p>
+                <form id="form-codigo">
+                    <label class="etiqueta" for="codigo">Código de acceso</label>
+                    <input class="campo" id="codigo" name="codigo" type="text" autocomplete="off" spellcheck="false">
+                    <button class="boton-claro" type="submit" id="btn-entrar">Entrar</button>
+                </form>
+            </details>
+        </div>
+    </dialog>
 
     <!-- Juego -->
     <div id="pantalla-juego" hidden>
-        <details class="cuenta">
-            <summary id="cuenta-resumen"></summary>
-            <div class="cuenta-cuerpo">
-                <p>Tu código de acceso te permite volver a entrar desde otro dispositivo o si borras los datos del navegador. Guárdalo en un sitio seguro.</p>
-                <div class="acciones-fila">
-                    <button class="boton-claro" type="button" id="btn-copiar">Copiar código</button>
-                    <button class="boton-claro" type="button" id="btn-salir">Cerrar sesión</button>
-                </div>
-            </div>
-        </details>
 
         <section id="reto" aria-labelledby="reto-fecha">
             <h2 id="reto-fecha" class="reto-fecha"></h2>
@@ -269,19 +316,66 @@ label.etiqueta { font-weight: 600; }
         </section>
 
         <p id="sin-retos" class="vacio" hidden>Todavía no hay ningún reto publicado. Vuelve pronto.</p>
-
-        <section class="seccion" id="otros" hidden>
-            <h2>Otros retos</h2>
-            <div id="lista-otros"></div>
-        </section>
-
-        <section class="seccion">
-            <h2>Ranking</h2>
-            <ol class="ranking" id="ranking"></ol>
-            <p class="vacio" id="ranking-vacio" hidden>Todavía no hay nadie en el ranking. El primer acierto se lleva el primer puesto.</p>
-        </section>
     </div>
+
 </main>
+
+<dialog id="info" class="panel" aria-labelledby="info-titulo">
+    <button class="boton-claro cierra-info modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
+    <h2 id="info-titulo" style="margin-bottom:.75rem">Cómo se juega</h2>
+    <p>En cada reto hay una lista de elementos con algo en común, menos uno. Encuentra el que sobra.</p>
+    <ul class="demo" aria-label="Ejemplo: Ebro, Duero, Tajo, Sena, Guadalquivir. Sobra el Sena, que es francés.">
+        <li>Ebro</li><li>Duero</li><li>Tajo</li><li><span class="tachable" style="background-size:100% 3px">Sena</span></li><li>Guadalquivir</li>
+    </ul>
+    <p class="vacio" style="margin-top:.5rem">Ríos de España: el Sena pasa por París.</p>
+    <ol class="pasos">
+        <li>Marca el que sobra y pulsa Comprobar. Solo tienes un intento.</li>
+        <li>Se tacha el intruso y se explica la conexión.</li>
+        <li>Si aciertas, el resto queda en cero y sumas puntos.</li>
+    </ol>
+    <table class="tabla-puntos">
+        <tr><td><strong>Con pista</strong></td><td>1 punto</td></tr>
+        <tr><td><strong>De una intersección</strong></td><td>2 puntos</td></tr>
+        <tr><td><strong>Sin pista</strong></td><td>3 puntos</td></tr>
+    </table>
+    <p>Hay dos retos por semana.</p>
+    <button class="boton cierra-info" type="button">Jugar</button>
+    <details>
+        <summary>Sobre el proyecto</summary>
+        <p style="margin-top:.5rem">Resto cero es un juego de lógica y cultura general. El nombre viene de la división: si encuentras el intruso, no sobra nada. Los retos «De una intersección» parten de un misterio de La Intersección, con enlace directo.</p>
+    </details>
+    <details>
+        <summary>Cuenta y datos</summary>
+        <p style="margin-top:.5rem">Solo guardamos tu nombre, tus respuestas y tus puntos. El nombre es público en el ranking. Tu código de acceso, en el podio, sirve para recuperar tus puntos desde otro dispositivo.</p>
+    </details>
+</dialog>
+
+<dialog id="podio" class="panel" aria-labelledby="podio-titulo">
+    <button class="boton-claro cierra-podio modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
+    <h2 id="podio-titulo">Podio</h2>
+    <div class="stats" id="stats" hidden>
+        <p><strong id="st-puntos">0</strong><span>Puntos</span></p>
+        <p><strong id="st-aciertos">0</strong><span>Aciertos</span></p>
+        <p><strong id="st-racha">0</strong><span>Racha</span></p>
+    </div>
+    <h3>Ranking</h3>
+    <ol class="ranking" id="ranking"></ol>
+    <p class="vacio" id="ranking-vacio" hidden>Todavía no hay nadie en el ranking. El primer acierto se lleva el primer puesto.</p>
+    <section id="otros" hidden>
+        <h3>Otros retos</h3>
+        <div id="lista-otros"></div>
+    </section>
+    <details class="cuenta">
+            <summary id="cuenta-resumen"></summary>
+            <div class="cuenta-cuerpo">
+                <p>Tu código de acceso te permite volver a entrar desde otro dispositivo o si borras los datos del navegador. Guárdalo en un sitio seguro.</p>
+                <div class="acciones-fila">
+                    <button class="boton-claro" type="button" id="btn-copiar">Copiar código</button>
+                    <button class="boton-claro" type="button" id="btn-salir">Cerrar sesión</button>
+                </div>
+            </div>
+        </details>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
@@ -315,19 +409,64 @@ const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: n
 
 /* ───────── Utilidades ───────── */
 function pantalla(nombre) {
-    ['config', 'entrada', 'juego'].forEach(n => { $('#pantalla-' + n).hidden = (n !== nombre); });
+    ['config', 'juego'].forEach(n => { $('#pantalla-' + n).hidden = (n !== nombre); });
 }
 
 let temporizadorAviso;
 function avisar(texto, tipo = 'error') {
-    const a = $('#aviso');
+    const a = $('#modal').open ? $('#aviso-modal') : $('#aviso');
     a.textContent = texto;
     a.className = 'aviso aviso-' + tipo;
     a.hidden = false;
     clearTimeout(temporizadorAviso);
     temporizadorAviso = setTimeout(() => { a.hidden = true; }, 9000);
 }
-function quitarAviso() { $('#aviso').hidden = true; }
+function quitarAviso() { $('#aviso').hidden = true; $('#aviso-modal').hidden = true; }
+
+const CLAVE_VISTO = 'restocero_visto';
+function yaVisto() { try { return !!localStorage.getItem(CLAVE_VISTO); } catch (e) { return false; } }
+function abrirModal() { const m = $('#modal'); if (!m.open) m.showModal(); }
+function abrirInfo() {
+    const m = $('#info'); if (!m.open) m.showModal();
+    try { localStorage.setItem(CLAVE_VISTO, '1'); } catch (e) { /* nada */ }
+}
+function abrirPodio() { pintarStats(); const m = $('#podio'); if (!m.open) m.showModal(); }
+function cerrarPodio() { const m = $('#podio'); if (m.open) m.close(); }
+
+function pintarStats() {
+    $('#stats').hidden = !S.perfil;
+    if (!S.perfil) return;
+    const hechos = [...S.intentos.values()];
+    let racha = 0;
+    for (let k = 0; k < S.retos.length; k++) {
+        const i = S.intentos.get(S.retos[k].id);
+        if (!i) { if (k === 0) continue; break; }
+        if (i.acertado) racha++; else break;
+    }
+    $('#st-puntos').textContent = S.perfil.puntos_totales;
+    $('#st-aciertos').textContent = `${hechos.filter(i => i.acertado).length} de ${hechos.length}`;
+    $('#st-racha').textContent = racha;
+}
+function cerrarModal() { const m = $('#modal'); if (m.open) m.close(); }
+
+/* Sin cuenta: se ve el reto y el ranking, y se pide el nombre al comprobar */
+async function entrarInvitado() {
+    S.token = null; S.perfil = null; S.intentos = new Map();
+    try {
+        const [retos, ranking] = await Promise.all([
+            leer('retos_publico', q => q.order('fecha', { ascending: false })),
+            leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10))
+        ]);
+        S.retos = retos;
+        pantalla('juego'); pintarCuenta(); pintarRanking(ranking);
+        $('#sin-retos').hidden = retos.length > 0;
+        $('#reto').hidden = retos.length === 0;
+        if (retos.length) elegirReto(retos[0].id); else $('#otros').hidden = true;
+    } catch (e) {
+        pantalla('juego'); pintarCuenta(); avisar(mensajeError(e));
+    }
+    if (!yaVisto()) abrirInfo();
+}
 
 function guardarToken(t) { try { localStorage.setItem(CLAVE_TOKEN, t); } catch (e) { /* navegación privada */ } }
 function leerToken() { try { return localStorage.getItem(CLAVE_TOKEN); } catch (e) { return null; } }
@@ -378,11 +517,11 @@ async function iniciar() {
     });
 
     S.token = leerToken();
-    if (!S.token) { pantalla('entrada'); return; }
+    if (!S.token) { entrarInvitado(); return; }
     try {
         await entrarAlJuego();
     } catch (e) {
-        pantalla('entrada');
+        entrarInvitado();
         avisar(mensajeError(e));
     }
 }
@@ -397,7 +536,7 @@ async function entrarAlJuego() {
 
     if (!perfil.length) {
         borrarToken(); S.token = null;
-        pantalla('entrada');
+        entrarInvitado();
         avisar('Tu sesión ya no es válida. Entra de nuevo con tu código o crea una cuenta.');
         return;
     }
@@ -406,6 +545,7 @@ async function entrarAlJuego() {
     S.retos = retos;
     S.intentos = new Map(intentos.map(i => [i.reto_id, i]));
     pantalla('juego');
+    cerrarModal();
     pintarCuenta();
     pintarRanking(ranking);
 
@@ -414,6 +554,7 @@ async function entrarAlJuego() {
     if (retos.length) {
         const pendiente = retos.find(r => !S.intentos.has(r.id));
         elegirReto((pendiente || retos[0]).id);
+        if (!pendiente) abrirPodio();
     } else {
         $('#otros').hidden = true;
     }
@@ -421,6 +562,10 @@ async function entrarAlJuego() {
 
 /* ───────── Pintar ───────── */
 function pintarCuenta() {
+    $('.cuenta').hidden = !S.perfil;
+    $('#btn-abrir-modal').hidden = !!S.perfil;
+    pintarStats();
+    if (!S.perfil) return;
     $('#cuenta-resumen').textContent = `${S.perfil.nombre}, ${plural(S.perfil.puntos_totales, 'punto', 'puntos')}`;
 }
 
@@ -454,6 +599,7 @@ function crearItem(texto, i) {
     const marca = document.createElement('span');
     marca.className = 'marca'; marca.setAttribute('aria-hidden', 'true');
     const t = document.createElement('span');
+    t.className = 'texto';
     const tachable = document.createElement('span');
     tachable.className = 'tachable'; tachable.textContent = texto;
     t.appendChild(tachable);
@@ -519,7 +665,7 @@ function pintarOtros() {
         const i = S.intentos.get(r.id);
         e.textContent = i ? (i.acertado ? 'Acertado' : 'Fallado') : 'Sin responder';
         b.append(f, n, e);
-        b.addEventListener('click', () => { elegirReto(r.id); $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' }); });
+        b.addEventListener('click', () => { cerrarPodio(); elegirReto(r.id); $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' }); });
         return b;
     }));
 }
@@ -565,7 +711,7 @@ function revelar(res, eleccion, animar) {
 function pintarResultado(res, nivel, textoIntruso) {
     const box = $('#resultado');
     const veredicto = document.createElement('p');
-    veredicto.className = 'veredicto';
+    veredicto.className = 'veredicto ' + (res.acertado ? 'ok' : 'mal');
     veredicto.textContent = res.acertado
         ? 'Resto cero. Lo has encontrado.'
         : `Todavía sobra algo. El intruso era «${textoIntruso}».`;
@@ -578,12 +724,17 @@ function pintarResultado(res, nivel, textoIntruso) {
         p.textContent = `+${plural(nivel.puntos, 'punto', 'puntos')}`;
         box.appendChild(p);
     }
+    const v = document.createElement('button');
+    v.type = 'button'; v.className = 'boton-claro'; v.textContent = 'Ver podio';
+    v.addEventListener('click', abrirPodio);
+    box.appendChild(v);
     box.focus({ preventScroll: true });
 }
 
 /* ───────── Acciones ───────── */
 async function comprobar(ev) {
     ev.preventDefault();
+    if (!S.token) { abrirModal(); return; }
     if (S.enviando) return;
     const marcado = $('input[name="elem"]:checked');
     if (!marcado) return;
@@ -670,7 +821,8 @@ async function entrarConCodigo(ev) {
 async function copiarCodigo() {
     try {
         await navigator.clipboard.writeText(S.token);
-        avisar('Código copiado.', 'ok');
+        const b = $('#btn-copiar'); b.textContent = 'Copiado';
+        setTimeout(() => { b.textContent = 'Copiar código'; }, 2000);
     } catch (e) {
         window.prompt('Copia tu código de acceso:', S.token);
     }
@@ -678,9 +830,10 @@ async function copiarCodigo() {
 
 function cerrarSesion() {
     if (!window.confirm('¿Cerrar sesión? Si no has guardado tu código de acceso, no podrás recuperar esta cuenta.')) return;
+    cerrarPodio();
     borrarToken();
     S.token = null; S.perfil = null; S.intentos = new Map();
-    pantalla('entrada');
+    entrarInvitado();
 }
 
 function conectarEventos() {
@@ -689,6 +842,15 @@ function conectarEventos() {
     $('#form-reto').addEventListener('submit', comprobar);
     $('#btn-copiar').addEventListener('click', copiarCodigo);
     $('#btn-salir').addEventListener('click', cerrarSesion);
+    $('#btn-abrir-modal').addEventListener('click', abrirModal);
+    $('#btn-info').addEventListener('click', abrirInfo);
+    $('#btn-podio').addEventListener('click', abrirPodio);
+    $$('.cierra-podio').forEach(b => b.addEventListener('click', cerrarPodio));
+    $('#podio').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarPodio(); });
+    $$('.cierra-info').forEach(b => b.addEventListener('click', () => $('#info').close()));
+    $('#info').addEventListener('click', ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });
+    $$('.cierra-modal').forEach(b => b.addEventListener('click', cerrarModal));
+    $('#modal').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarModal(); });
     $('#elementos').addEventListener('change', () => {
         $$('.item').forEach(it => it.classList.toggle('elegido', $('input', it).checked));
         $('#btn-comprobar').disabled = !$('input[name="elem"]:checked') || S.enviando;
