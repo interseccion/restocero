@@ -35,7 +35,7 @@ body {
     font-size: 1rem;
     line-height: 1.5;
 }
-.pagina { max-width: 38rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.pagina { max-width: 38rem; margin: 0 auto; padding: 1.5rem 1rem 6rem; }
 [hidden] { display: none !important; }
 .solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -249,6 +249,19 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
 .pista { margin: 0 0 1.25rem; padding: .75rem 1rem; border-left: 4px solid #E3B800; background: rgba(255, 225, 77, .35); }
 .pista p { margin: 0; }
 .estadistica-pista { color: var(--grafito); font-size: .95rem; }
+.sello { display: inline-block; margin: .1rem 0 .15rem; padding: 0 .65rem; font: 700 1.5rem/1.35 var(--mano); letter-spacing: .1em;
+    text-transform: uppercase; color: var(--rojo); border: 2px solid var(--rojo); border-radius: 4px; transform: rotate(-4deg); filter: url(#rotu); }
+.nota-alfa { margin: 0 0 1rem; font-size: .9rem; color: var(--grafito); }
+.flotante { position: fixed; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); z-index: 4;
+    display: flex; align-items: center; gap: .6rem; text-decoration: none; }
+.flotante-logo { display: block; width: 3.5rem; height: 3.5rem; border-radius: 50%; overflow: hidden; background: #fff;
+    border: 2px solid var(--tinta); box-shadow: 0 2px 8px rgba(27, 53, 144, .35); transition: transform .2s; }
+.flotante-logo img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
+.flotante-txt { background: var(--tinta); color: var(--papel); font-weight: 600; font-size: .9rem; padding: .35rem .7rem;
+    border-radius: 3px; white-space: nowrap; opacity: 0; transform: translateX(6px); pointer-events: none; transition: opacity .2s, transform .2s; }
+.flotante:hover .flotante-txt, .flotante:focus-visible .flotante-txt { opacity: 1; transform: none; }
+.flotante:hover .flotante-logo, .flotante:focus-visible .flotante-logo { transform: scale(1.06); }
+.flotante:focus-visible { outline: 3px solid var(--rojo); outline-offset: 3px; border-radius: 3rem; }
 </style>
 </head>
 <body>
@@ -268,6 +281,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
 <feColorMatrix in="grano" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.9" result="huecos"/>
 <feComposite in="borde" in2="huecos" operator="in"/>
 </filter></defs><path pathLength="1" transform="rotate(-24 50 50)" d="M 8 58 C 5 36 30 19 57 19 C 86 19 99 37 94 54 C 89 72 58 84 33 79 C 13 75 5 61 14 44 C 21 31 36 25 49 24"/><path class="p2" pathLength="1" transform="rotate(-21 50 50) translate(-.8 .7)" d="M 9 56 C 6 35 31 21 57 20 C 85 20 98 38 93 55 C 88 71 58 83 34 78 C 15 74 7 61 15 45 C 22 33 37 27 50 26"/></svg></span></h1>
+        <div><span class="sello" title="Versión alfa: puede cambiar todo">alfa</span></div>
         <p class="lema">Encuentra lo que sobra.</p>
         <div class="cab-links">
             <button class="enlace" type="button" id="btn-info">Cómo se juega</button>
@@ -296,6 +310,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
             <form id="form-nombre">
                 <label class="etiqueta" for="nombre">Tu nombre</label>
                 <input class="campo" id="nombre" name="nombre" type="text" maxlength="30" autocomplete="nickname" autofocus>
+                <p class="nota-alfa"><strong>Versión alfa.</strong> Todo puede cambiar, y las cuentas también. Si algún día se unifican con las de La Intersección, la tuya podría cambiar.</p>
                 <button class="boton" type="submit" id="btn-crear">Empezar a jugar</button>
                 <button class="boton-claro cierra-modal" type="button">Ahora no</button>
             </form>
@@ -350,6 +365,11 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
     </div>
 
 </main>
+
+<a class="flotante" href="https://interseccion.github.io/" target="_blank" rel="noopener" aria-label="Ir a la Intersección" title="Ir a la Intersección">
+    <span class="flotante-txt">Ir a la Intersección</span>
+    <span class="flotante-logo"><img src="img/interseccion.png" alt="" width="144" height="144"></span>
+</a>
 
 <dialog id="info" class="panel" aria-labelledby="info-titulo">
     <button class="boton-claro cierra-info modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
