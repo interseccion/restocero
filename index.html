@@ -6,6 +6,16 @@
 <title>Resto cero</title>
 <meta name="description" content="Un juego de lógica: en cada reto hay un elemento que no encaja. Encuéntralo. Dos retos por semana.">
 <meta name="theme-color" content="#EDF3F2">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="Resto cero">
+<meta property="og:description" content="Un juego de lógica: en cada reto hay un elemento que no encaja. Encuéntralo. Dos retos por semana.">
+<meta property="og:image" content="https://interseccion.github.io/restocero/img/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="fonts/caveat-700.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face { font-family: "Caveat"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/caveat-700.woff2") format("woff2"); }
@@ -262,6 +272,19 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
 .flotante:hover .flotante-txt, .flotante:focus-visible .flotante-txt { opacity: 1; transform: none; }
 .flotante:hover .flotante-logo, .flotante:focus-visible .flotante-logo { transform: scale(1.06); }
 .flotante:focus-visible { outline: 3px solid var(--rojo); outline-offset: 3px; border-radius: 3rem; }
+.casilla { display: flex; align-items: flex-start; gap: .6rem; margin: 0 0 .5rem; min-height: 44px; cursor: pointer; }
+.casilla input { width: 1.25rem; height: 1.25rem; margin-top: .2rem; flex: none; accent-color: var(--rojo); }
+.casilla a { color: inherit; text-underline-offset: .2em; }
+.nota-alfa a { color: inherit; }
+.pie { display: flex; flex-wrap: wrap; gap: 0 1.25rem; margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--linea); }
+.pie a.enlace { display: inline-flex; align-items: center; }
+.proximo { margin: .75rem 0 0; color: var(--grafito); }
+.trampa { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+select.campo, textarea.campo { display: block; width: 100%; margin: .25rem 0 1rem; padding: .6rem .75rem; background: var(--papel);
+    border: 2px solid var(--tinta); border-radius: 3px; min-height: 44px; font: inherit; color: inherit; }
+textarea.campo { resize: vertical; }
+#btn-si-borrar { background: var(--rojo); }
+#btn-si-borrar:hover:not(:disabled) { background: #A82620; }
 </style>
 </head>
 <body>
@@ -310,6 +333,8 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
             <form id="form-nombre">
                 <label class="etiqueta" for="nombre">Tu nombre</label>
                 <input class="campo" id="nombre" name="nombre" type="text" maxlength="30" autocomplete="nickname" autofocus>
+                <label class="casilla"><input type="checkbox" id="chk-edad"><span>Tengo 14 años o más.</span></label>
+                <label class="casilla"><input type="checkbox" id="chk-legal"><span>He leído y acepto los <a href="terminos.html" target="_blank" rel="noopener">Términos</a> y la <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>
                 <p class="nota-alfa"><strong>Versión alfa.</strong> Todo puede cambiar, y las cuentas también. Si algún día se unifican con las de La Intersección, la tuya podría cambiar.</p>
                 <button class="boton" type="submit" id="btn-crear">Empezar a jugar</button>
                 <button class="boton-claro cierra-modal" type="button">Ahora no</button>
@@ -359,11 +384,17 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
             </form>
 
             <div class="resultado" id="resultado" tabindex="-1" aria-live="polite"></div>
+            <p class="proximo" id="proximo" hidden></p>
         </section>
 
         <p id="sin-retos" class="vacio" hidden>Todavía no hay ningún reto publicado. Vuelve pronto.</p>
     </div>
 
+    <footer class="pie">
+        <button class="enlace" type="button" id="btn-opiniones">Opiniones y mensajes</button>
+        <a class="enlace" href="terminos.html">Términos</a>
+        <a class="enlace" href="privacidad.html">Privacidad</a>
+    </footer>
 </main>
 
 <a class="flotante" href="https://interseccion.github.io/" target="_blank" rel="noopener" aria-label="Ir a la Intersección" title="Ir a la Intersección">
@@ -417,9 +448,32 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
     <div id="otros" hidden><div id="lista-otros"></div></div>
 </dialog>
 
+<dialog id="opiniones" class="panel" aria-labelledby="op-titulo">
+    <button class="boton-claro cierra-op modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
+    <h2 id="op-titulo" style="margin-bottom:.75rem">Opiniones y mensajes</h2>
+    <p>Esto está en alfa, así que tu opinión vale mucho. Cuéntanos qué falla, qué te gusta o qué cambiarías.</p>
+    <p id="aviso-op" class="aviso" role="status" aria-live="polite" hidden></p>
+    <form id="form-op">
+        <label class="etiqueta" for="op-tipo">Tipo</label>
+        <select class="campo" id="op-tipo">
+            <option value="opinion">Opinión</option>
+            <option value="error">Algo no funciona</option>
+            <option value="sugerencia">Sugerencia</option>
+        </select>
+        <label class="etiqueta" for="op-mensaje">Mensaje</label>
+        <textarea class="campo" id="op-mensaje" rows="5" maxlength="1000"></textarea>
+        <label class="etiqueta" for="op-email">Email (opcional, solo si quieres respuesta)</label>
+        <input class="campo" id="op-email" type="email" maxlength="120" autocomplete="email">
+        <div class="trampa" aria-hidden="true"><label>No rellenar <input id="op-web" tabindex="-1" autocomplete="off"></label></div>
+        <p class="nota-alfa">Guardamos tu mensaje, y tu email si lo escribes, solo para atenderlo. Más información en la <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</p>
+        <button class="boton" type="submit" id="btn-op">Enviar</button>
+    </form>
+</dialog>
+
 <dialog id="podio" class="panel" aria-labelledby="podio-titulo">
     <button class="boton-claro cierra-podio modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
     <h2 id="podio-titulo">Podio</h2>
+    <p class="vacio" id="proximo-podio" hidden></p>
     <div class="stats" id="stats" hidden>
         <p><strong id="st-puntos">0</strong><span>Puntos</span></p>
         <p><strong id="st-aciertos">0</strong><span>Aciertos</span></p>
@@ -435,9 +489,20 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
                 <div class="acciones-fila">
                     <button class="boton-claro" type="button" id="btn-copiar">Copiar código</button>
                     <button class="boton-claro" type="button" id="btn-salir">Cerrar sesión</button>
+                    <button class="boton-claro" type="button" id="btn-borrar">Borrar mi cuenta</button>
                 </div>
             </div>
         </details>
+</dialog>
+
+<dialog id="borrar" class="panel" aria-labelledby="borrar-titulo">
+    <h2 id="borrar-titulo" style="margin-bottom:.75rem">¿Borrar tu cuenta?</h2>
+    <p>Se borrarán tu nombre, tus respuestas, tus puntos y los mensajes que hayas enviado con esta cuenta. No se puede deshacer.</p>
+    <p id="aviso-borrar" class="aviso" role="status" aria-live="polite" hidden></p>
+    <div class="confirma-acc">
+        <button class="boton-claro" type="button" id="btn-no-borrar" autofocus>Mejor no</button>
+        <button class="boton" type="button" id="btn-si-borrar">Sí, borrar mi cuenta</button>
+    </div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
@@ -484,14 +549,15 @@ function pantalla(nombre) {
 
 let temporizadorAviso;
 function avisar(texto, tipo = 'error') {
-    const a = $('#modal').open ? $('#aviso-modal') : $('#aviso');
+    const abiertos = [...document.querySelectorAll('dialog[open]')];
+    const a = (abiertos.length && abiertos[abiertos.length - 1].querySelector('.aviso')) || $('#aviso');
     a.textContent = texto;
     a.className = 'aviso aviso-' + tipo;
     a.hidden = false;
     clearTimeout(temporizadorAviso);
     temporizadorAviso = setTimeout(() => { a.hidden = true; }, 9000);
 }
-function quitarAviso() { $('#aviso').hidden = true; $('#aviso-modal').hidden = true; }
+function quitarAviso() { $$('.aviso').forEach(a => { a.hidden = true; }); }
 
 const CLAVE_VISTO = 'restocero_visto';
 function yaVisto() { try { return !!localStorage.getItem(CLAVE_VISTO); } catch (e) { return false; } }
@@ -504,6 +570,56 @@ function abrirPodio() { pintarStats(); const m = $('#podio'); if (!m.open) m.sho
 function cerrarPodio() { const m = $('#podio'); if (m.open) m.close(); }
 function abrirArchivo() { const m = $('#archivo'); if (!m.open) m.showModal(); }
 function cerrarArchivo() { const m = $('#archivo'); if (m.open) m.close(); }
+
+/* Próximo reto: solo la fecha, nunca el contenido */
+function textoProximo() {
+    if (!S.proximo) return null;
+    const d = new Date(S.proximo + 'T12:00:00');
+    const hoy = new Date(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' }) + 'T12:00:00');
+    const dias = Math.round((d - hoy) / 86400000);
+    const cuando = dias === 1 ? 'mañana' : 'el ' + d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
+    return `El siguiente reto sale ${cuando}.`;
+}
+function pintarProximo() {
+    const t = textoProximo();
+    const respondido = !S.practica && S.actual && S.intentos.has(S.actual.id);
+    $('#proximo').textContent = t || '';
+    $('#proximo').hidden = !(t && respondido);
+    if (S.proximo !== undefined) { $('#proximo-podio').textContent = t || 'Todavía no hay fecha para el siguiente reto.'; $('#proximo-podio').hidden = false; }
+}
+async function cargarProximo() {
+    try { const [f] = await rpc('proximo_reto', {}); S.proximo = (f && f.fecha) || null; }
+    catch (e) { S.proximo = undefined; $('#proximo-podio').hidden = true; return; }
+    pintarProximo();
+}
+
+/* Opiniones y mensajes */
+async function enviarOpinion(ev) {
+    ev.preventDefault();
+    const msg = $('#op-mensaje').value.trim();
+    if (msg.length < 5) { avisar('Escribe un mensaje un poco más largo.'); return; }
+    const btn = $('#btn-op'); btn.disabled = true;
+    try {
+        await rpc('enviar_opinion', { p_tipo: $('#op-tipo').value, p_mensaje: msg,
+            p_email: $('#op-email').value.trim() || null, p_token: S.token || null, p_web: $('#op-web').value });
+        $('#form-op').reset();
+        avisar('Mensaje enviado. ¡Gracias!', 'ok');
+    } catch (e) { avisar(mensajeError(e)); }
+    finally { btn.disabled = false; }
+}
+
+/* Borrar mi cuenta */
+async function borrarCuenta() {
+    const b = $('#btn-si-borrar'); b.disabled = true;
+    try {
+        await rpc('borrar_cuenta', { p_token: S.token });
+        $('#borrar').close(); cerrarPodio();
+        borrarToken(); S.pendiente = null;
+        await entrarInvitado();
+        avisar('Tu cuenta se ha borrado.', 'ok');
+    } catch (e) { avisar(mensajeError(e)); }
+    finally { b.disabled = false; }
+}
 
 function abrirConfirmacion(eleccion) {
     const r = S.actual;
@@ -598,6 +714,7 @@ async function entrarInvitado() {
     } catch (e) {
         pantalla('juego'); pintarCuenta(); avisar(mensajeError(e));
     }
+    cargarProximo();
     if (!yaVisto()) abrirInfo();
 }
 
@@ -609,7 +726,7 @@ function mensajeError(e) {
     const m = (e && e.message) || '';
     if (/Token no válido/.test(m)) return 'Tu sesión ya no es válida. Entra de nuevo con tu código.';
     if (/Reto no encontrado/.test(m)) return 'Ese reto ya no está disponible.';
-    if (/nombre/i.test(m)) return m;
+    if (/nombre|mensaje|email|Demasiados|Debes|Tipo de/i.test(m)) return m;
     return 'No se ha podido conectar. Inténtalo de nuevo en un momento.';
 }
 
@@ -695,6 +812,7 @@ async function entrarAlJuego() {
     } else {
         $('#otros').hidden = true; $('#otros-vacio').hidden = false;
     }
+    cargarProximo();
     restaurarPendiente();
 }
 
@@ -775,6 +893,7 @@ function pintarReto() {
     const segunda = !S.practica && r.tiene_pista && nivel.puntos >= 2;
     $('.instruccion').textContent = 'Hay un elemento que no encaja con los demás. Márcalo y pulsa Comprobar. ' + (segunda
         ? 'Si fallas, tendrás una segunda oportunidad con pista, pero valdrá solo 1 punto.' : 'Solo tienes un intento.');
+    $('#proximo').hidden = true;
     const fallo = S.fallos.get(r.id);
     if (segunda && fallo != null && !S.intentos.has(r.id)) {
         const it = $$('.item')[fallo];
@@ -883,6 +1002,7 @@ function pintarResultado(res, nivel, textoIntruso) {
         e.textContent = `💡 ${plural(res.n_pista, 'persona ha usado', 'personas han usado')} la pista; ${res.n_sin_pista} no.`;
         box.appendChild(e);
     }
+    if (!S.practica) pintarProximo();
     if (S.practica) {
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'boton'; b.textContent = 'Ir al reto de verdad';
@@ -991,10 +1111,11 @@ async function crearCuenta(ev) {
     ev.preventDefault();
     const nombre = $('#nombre').value.trim();
     if (!nombre) { avisar('Escribe un nombre para continuar.'); return; }
+    if (!$('#chk-edad').checked || !$('#chk-legal').checked) { avisar('Marca las dos casillas para crear tu cuenta.'); return; }
     const btn = $('#btn-crear');
     btn.disabled = true;
     try {
-        const [fila] = await rpc('crear_jugador', { p_nombre: nombre });
+        const [fila] = await rpc('crear_jugador', { p_nombre: nombre, p_acepta: true });
         S.token = fila.token; guardarToken(fila.token);
         quitarAviso();
         await entrarAlJuego();
@@ -1086,6 +1207,13 @@ function conectarEventos() {
     $('#btn-archivo').addEventListener('click', abrirArchivo);
     $$('.cierra-archivo').forEach(b => b.addEventListener('click', cerrarArchivo));
     $('#archivo').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarArchivo(); });
+    $('#btn-opiniones').addEventListener('click', () => $('#opiniones').showModal());
+    $$('.cierra-op').forEach(b => b.addEventListener('click', () => $('#opiniones').close()));
+    $('#opiniones').addEventListener('click', ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });
+    $('#form-op').addEventListener('submit', enviarOpinion);
+    $('#btn-borrar').addEventListener('click', () => $('#borrar').showModal());
+    $('#btn-no-borrar').addEventListener('click', () => $('#borrar').close());
+    $('#btn-si-borrar').addEventListener('click', borrarCuenta);
     $$('.cierra-podio').forEach(b => b.addEventListener('click', cerrarPodio));
     $('#podio').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarPodio(); });
     $$('.cierra-info').forEach(b => b.addEventListener('click', () => $('#info').close()));
