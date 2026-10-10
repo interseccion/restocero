@@ -417,6 +417,7 @@ textarea.campo { resize: vertical; }
         <tr><td><strong>Sin categoría</strong></td><td>3 puntos</td></tr>
     </table>
     <p>Hay dos retos por semana. En los de 2 y 3 puntos puede haber una pista opcional: abrirla te cuesta 1 punto. Si hay pista y fallas a la primera, se abre sola y tienes una segunda oportunidad que vale 1 punto. Al compartir se indica si la has usado.</p>
+    <p>El ranking se reinicia cada mes, y puedes ver también los meses anteriores y el total acumulado.</p>
     <div class="confirma-acc" style="margin:0 0 .5rem">
         <button class="boton" type="button" id="btn-practica">Probar uno de práctica</button>
         <button class="boton-claro cierra-info" type="button">Ir al reto</button>
@@ -480,6 +481,7 @@ textarea.campo { resize: vertical; }
         <p><strong id="st-racha">0</strong><span>Racha</span></p>
     </div>
     <h3>Ranking</h3>
+    <select class="campo" id="rank-vista" aria-label="Elegir ranking"></select>
     <ol class="ranking" id="ranking"></ol>
     <p class="vacio" id="ranking-vacio" hidden>Todavía no hay nadie en el ranking. El primer acierto se lleva el primer puesto.</p>
     <details class="cuenta">
@@ -535,7 +537,7 @@ const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
 
 let db = null;
-const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null, pistas: new Map(), fallos: new Map(), pendiente: null };
+const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null, pistas: new Map(), fallos: new Map(), pendiente: null, rankTotal: [], rankMes: new Map() };
 const RETO_TUTORIAL = {
     id: 'tutorial', dificultad: 'con_pista', categoria: 'Ríos de España', misterio_relacionado: null,
     elementos: ['Ebro', 'Duero', 'Tajo', 'Sena', 'Guadalquivir'], intruso: 3,
@@ -707,7 +709,7 @@ async function entrarInvitado() {
             leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10))
         ]);
         S.retos = retos;
-        pantalla('juego'); pintarCuenta(); pintarRanking(ranking);
+        pantalla('juego'); pintarCuenta(); S.rankTotal = ranking; S.rankMes.clear(); prepararRanking();
         $('#sin-retos').hidden = retos.length > 0;
         $('#reto').hidden = retos.length === 0;
         if (retos.length) elegirReto(retos[0].id); else { $('#otros').hidden = true; $('#otros-vacio').hidden = false; }
@@ -801,7 +803,7 @@ async function entrarAlJuego() {
     pantalla('juego');
     cerrarModal();
     pintarCuenta();
-    pintarRanking(ranking);
+    S.rankTotal = ranking; S.rankMes.clear(); prepararRanking();
 
     $('#sin-retos').hidden = retos.length > 0;
     $('#reto').hidden = retos.length === 0;
@@ -823,6 +825,41 @@ function pintarCuenta() {
     pintarStats();
     if (!S.perfil) return;
     $('#cuenta-resumen').textContent = `${S.perfil.nombre}, ${plural(S.perfil.puntos_totales, 'punto', 'puntos')}`;
+}
+
+const claveMes = iso => iso.slice(0, 7) + '-01';
+const nombreMes = clave => new Date(clave + 'T12:00:00').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+function prepararRanking() {
+    const sel = $('#rank-vista');
+    const hoy = claveMes(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' }));
+    const meses = [...new Set([hoy, ...S.retos.map(r => claveMes(r.fecha))])].sort().reverse();
+    const previo = sel.value;
+    const opciones = meses.map(m => {
+        const o = document.createElement('option');
+        o.value = m; o.textContent = m === hoy ? `Este mes (${nombreMes(m)})` : nombreMes(m);
+        return o;
+    });
+    const tot = document.createElement('option');
+    tot.value = 'total'; tot.textContent = 'Total acumulado';
+    sel.replaceChildren(...opciones, tot);
+    sel.value = [...sel.options].some(o => o.value === previo) ? previo : hoy;
+    mostrarRanking();
+}
+
+async function mostrarRanking() {
+    const sel = $('#rank-vista'), v = sel.value;
+    if (v === 'total') { pintarRanking(S.rankTotal); return; }
+    try {
+        if (!S.rankMes.has(v)) {
+            const filas = await leer('ranking_mensual', q => q.eq('mes', v)
+                .order('puntos', { ascending: false }).order('ultimo', { ascending: true }).limit(10));
+            S.rankMes.set(v, filas.map(f => ({ nombre: f.nombre, puntos_totales: f.puntos })));
+        }
+        if (sel.value === v) pintarRanking(S.rankMes.get(v));
+    } catch (e) {
+        sel.value = 'total'; pintarRanking(S.rankTotal);   // si el SQL del mensual aún no está, se ve el total
+    }
 }
 
 function pintarRanking(filas) {
@@ -1098,7 +1135,7 @@ async function comprobar(ev) {
         pintarOtros();
 
         leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10))
-            .then(pintarRanking).catch(() => { /* el ranking se actualizará la próxima vez */ });
+            .then(r => { S.rankTotal = r; S.rankMes.clear(); mostrarRanking(); }).catch(() => { /* el ranking se actualizará la próxima vez */ });
     } catch (e) {
         avisar(mensajeError(e));
         btn.disabled = false; btn.textContent = 'Comprobar';
@@ -1211,6 +1248,7 @@ function conectarEventos() {
     $$('.cierra-op').forEach(b => b.addEventListener('click', () => $('#opiniones').close()));
     $('#opiniones').addEventListener('click', ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });
     $('#form-op').addEventListener('submit', enviarOpinion);
+    $('#rank-vista').addEventListener('change', mostrarRanking);
     $('#btn-borrar').addEventListener('click', () => $('#borrar').showModal());
     $('#btn-no-borrar').addEventListener('click', () => $('#borrar').close());
     $('#btn-si-borrar').addEventListener('click', borrarCuenta);
