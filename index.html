@@ -365,7 +365,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
         <tr><td><strong>De una intersección</strong></td><td>2 puntos</td></tr>
         <tr><td><strong>Sin categoría</strong></td><td>3 puntos</td></tr>
     </table>
-    <p>Hay dos retos por semana. En los de 2 y 3 puntos puede haber una pista opcional: abrirla te cuesta 1 punto, y al compartir se indica si la has usado.</p>
+    <p>Hay dos retos por semana. En los de 2 y 3 puntos puede haber una pista opcional: abrirla te cuesta 1 punto. Si hay pista y fallas a la primera, se abre sola y tienes una segunda oportunidad que vale 1 punto. Al compartir se indica si la has usado.</p>
     <div class="confirma-acc" style="margin:0 0 .5rem">
         <button class="boton" type="button" id="btn-practica">Probar uno de práctica</button>
         <button class="boton-claro cierra-info" type="button">Ir al reto</button>
@@ -383,7 +383,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
 <dialog id="confirmar" class="panel" aria-labelledby="confirmar-titulo">
     <h2 id="confirmar-titulo" style="margin-bottom:.75rem">¿Seguro?</h2>
     <p>Has elegido <strong id="confirmar-elegido"></strong>.</p>
-    <p>Solo tienes un intento y no se puede cambiar después. Repasa qué tienen en común los demás elementos y comprueba que este es de verdad el que se sale.</p>
+    <p id="confirmar-texto"></p>
     <div class="confirma-acc">
         <button class="boton-claro" type="button" id="btn-seguir" autofocus>Seguir pensando</button>
         <button class="boton" type="button" id="btn-confirmar">Sí, es este</button>
@@ -450,7 +450,7 @@ const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
 
 let db = null;
-const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null, pistas: new Map(), pendiente: null };
+const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null, pistas: new Map(), fallos: new Map(), pendiente: null };
 const RETO_TUTORIAL = {
     id: 'tutorial', dificultad: 'con_pista', categoria: 'Ríos de España', misterio_relacionado: null,
     elementos: ['Ebro', 'Duero', 'Tajo', 'Sena', 'Guadalquivir'], intruso: 3,
@@ -486,7 +486,13 @@ function abrirArchivo() { const m = $('#archivo'); if (!m.open) m.showModal(); }
 function cerrarArchivo() { const m = $('#archivo'); if (m.open) m.close(); }
 
 function abrirConfirmacion(eleccion) {
-    $('#confirmar-elegido').textContent = `«${S.actual.elementos[eleccion]}»`;
+    const r = S.actual;
+    const segunda = r.tiene_pista && (NIVELES[r.dificultad] || NIVELES.con_pista).puntos >= 2;
+    const repasa = ' Repasa qué tienen en común los demás elementos y comprueba que este es de verdad el que se sale.';
+    $('#confirmar-texto').textContent = !segunda ? 'Solo tienes un intento y no se puede cambiar después.' + repasa
+        : S.fallos.has(r.id) ? 'Es tu segunda y última oportunidad: si fallas, se revela la respuesta.' + repasa
+        : 'Si fallas, tendrás una segunda oportunidad con la pista, pero acertar solo valdrá 1 punto.' + repasa;
+    $('#confirmar-elegido').textContent = `«${r.elementos[eleccion]}»`;
     $('#confirmar').showModal();
 }
 /* Si respondiste sin cuenta, al crearla se recupera tu elección y se te pide confirmarla */
@@ -508,6 +514,11 @@ function pintarPista() {
     if (S.practica || !r.tiene_pista || nivel.puntos < 2) { box.hidden = true; return; }
     const texto = S.pistas.get(r.id);
     if (texto) {
+        if (S.fallos.has(r.id) && !S.intentos.has(r.id)) {
+            const a = document.createElement('p'); a.style.fontWeight = '600';
+            a.textContent = 'Ese no era. Tienes una segunda oportunidad, pero acertar vale solo 1 punto.';
+            box.appendChild(a);
+        }
         const p = document.createElement('p');
         const b = document.createElement('strong'); b.textContent = 'Pista: ';
         p.append(b, texto); box.appendChild(p); box.hidden = false; return;
@@ -553,7 +564,7 @@ function cerrarModal() { const m = $('#modal'); if (m.open) m.close(); }
 
 /* Sin cuenta: se ve el reto y el ranking, y se pide el nombre al comprobar */
 async function entrarInvitado() {
-    S.token = null; S.perfil = null; S.intentos = new Map(); S.pistas = new Map();
+    S.token = null; S.perfil = null; S.intentos = new Map(); S.pistas = new Map(); S.fallos = new Map();
     try {
         const [retos, ranking] = await Promise.all([
             leer('retos_publico', q => q.order('fecha', { ascending: false })),
@@ -629,12 +640,13 @@ async function iniciar() {
 }
 
 async function entrarAlJuego() {
-    const [perfil, retos, intentos, ranking, pistas] = await Promise.all([
+    const [perfil, retos, intentos, ranking, pistas, fallos] = await Promise.all([
         rpc('mi_perfil', { p_token: S.token }),
         leer('retos_publico', q => q.order('fecha', { ascending: false })),
         rpc('mis_intentos', { p_token: S.token }),
         leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10)),
-        rpc('mis_pistas', { p_token: S.token }).catch(() => [])
+        rpc('mis_pistas', { p_token: S.token }).catch(() => []),
+        rpc('mis_primeros_fallos', { p_token: S.token }).catch(() => [])
     ]);
 
     if (!perfil.length) {
@@ -648,6 +660,7 @@ async function entrarAlJuego() {
     S.retos = retos;
     S.intentos = new Map(intentos.map(i => [i.reto_id, i]));
     S.pistas = new Map(pistas.map(x => [x.reto_id, x.pista]));
+    S.fallos = new Map(fallos.map(x => [x.reto_id, x.eleccion_indice]));
     pantalla('juego');
     cerrarModal();
     pintarCuenta();
@@ -739,6 +752,14 @@ function pintarReto() {
     }
 
     $('#elementos').replaceChildren(...r.elementos.map(crearItem));
+    const segunda = !S.practica && r.tiene_pista && nivel.puntos >= 2;
+    $('.instruccion').textContent = 'Hay un elemento que no encaja con los demás. Márcalo y pulsa Comprobar. ' + (segunda
+        ? 'Si fallas, tendrás una segunda oportunidad con pista, pero valdrá solo 1 punto.' : 'Solo tienes un intento.');
+    const fallo = S.fallos.get(r.id);
+    if (segunda && fallo != null && !S.intentos.has(r.id)) {
+        const it = $$('.item')[fallo];
+        if (it) { it.classList.add('elegido-mal', 'cerrado'); $('input', it).disabled = true; }
+    }
     pintarPista();
 
     // Estado inicial limpio
@@ -756,7 +777,8 @@ function pintarReto() {
             acertado: previo.acertado,
             intruso_indice: previo.intruso_indice,
             conexion_intrusa: previo.conexion_intrusa,
-            uso_pista: previo.uso_pista, n_pista: previo.n_pista, n_sin_pista: previo.n_sin_pista
+            uso_pista: previo.uso_pista, n_pista: previo.n_pista, n_sin_pista: previo.n_sin_pista,
+            intento_numero: previo.intento_numero, primer_fallo: previo.primer_fallo_indice
         }, previo.eleccion_indice, false);
     }
 }
@@ -794,6 +816,7 @@ function revelar(res, eleccion, animar) {
     const fase1 = () => {
         if (intruso) intruso.classList.add('es-intruso');
         if (!res.acertado && elegido) elegido.classList.add('elegido-mal');
+        if (res.primer_fallo != null && items[res.primer_fallo]) items[res.primer_fallo].classList.add('elegido-mal');
         $('#resto-valor').textContent = '1';
         $('#resto-cifra').classList.add('uno');
     };
@@ -830,8 +853,9 @@ function pintarResultado(res, nivel, textoIntruso) {
     if (res.acertado && !S.practica) {
         const p = document.createElement('p');
         p.className = 'puntos-ganados';
-        const pts = nivel.puntos - (res.uso_pista ? 1 : 0);
-        p.textContent = `+${plural(pts, 'punto', 'puntos')}` + (res.uso_pista ? ' (1 menos por la pista)' : '');
+        const dos = res.intento_numero === 2;
+        const pts = dos ? 1 : nivel.puntos - (res.uso_pista ? 1 : 0);
+        p.textContent = `+${plural(pts, 'punto', 'puntos')}` + (dos ? ' (a la segunda)' : (res.uso_pista ? ' (1 menos por la pista)' : ''));
         box.appendChild(p);
     }
     if (S.actual.tiene_pista && !S.practica && res.n_pista != null) {
@@ -914,10 +938,18 @@ async function comprobar(ev) {
             return;
         }
 
+        if (res.segunda_oportunidad) {
+            S.fallos.set(S.actual.id, eleccion);
+            S.pistas.set(S.actual.id, res.pista);
+            pintarReto();
+            return;
+        }
+
         S.intentos.set(S.actual.id, {
             reto_id: S.actual.id, eleccion_indice: eleccion, acertado: res.acertado,
             intruso_indice: res.intruso_indice, conexion_intrusa: res.conexion_intrusa,
-            uso_pista: res.uso_pista, n_pista: res.n_pista, n_sin_pista: res.n_sin_pista
+            uso_pista: res.uso_pista, n_pista: res.n_pista, n_sin_pista: res.n_sin_pista,
+            intento_numero: res.intento_numero, primer_fallo_indice: S.fallos.get(S.actual.id)
         });
         S.perfil.puntos_totales = res.puntos_totales;
         pintarCuenta();
@@ -988,7 +1020,7 @@ async function compartir(btn) {
     const cuando = r.fecha === hoy ? 'hoy' : `en el reto del ${fechaCorta(r.fecha)}`;
     const enlace = location.href.split('#')[0];
     const texto = i.acertado
-        ? `He conseguido un Resto Cero ${cuando} ✅ (${nivel}${comp}${extra}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
+        ? `He conseguido un Resto Cero ${cuando}${i.intento_numero === 2 ? ' a la segunda' : ''} ✅ (${nivel}${comp}${extra}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
         : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}${comp}${extra}).\n¿Serías capaz tú?\n${enlace}`;
     try {
         // Menú nativo del móvil (WhatsApp, Telegram, Mensajes...): el enlace va aparte del texto
