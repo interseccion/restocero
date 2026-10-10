@@ -285,6 +285,11 @@ select.campo, textarea.campo { display: block; width: 100%; margin: .25rem 0 1re
 textarea.campo { resize: vertical; }
 #btn-si-borrar { background: var(--rojo); }
 #btn-si-borrar:hover:not(:disabled) { background: #A82620; }
+dialog#legal { width: min(42rem, calc(100% - 2rem)); }
+.legal-cuerpo p, .legal-cuerpo li { margin: 0 0 .6rem; }
+.legal-cuerpo ul { padding-left: 1.25rem; margin: 0 0 .6rem; }
+.legal-cuerpo h3 { margin-top: 1.5rem; }
+.legal-cuerpo a { color: inherit; text-underline-offset: .2em; }
 </style>
 </head>
 <body>
@@ -334,7 +339,7 @@ textarea.campo { resize: vertical; }
                 <label class="etiqueta" for="nombre">Tu nombre</label>
                 <input class="campo" id="nombre" name="nombre" type="text" maxlength="30" autocomplete="nickname" autofocus>
                 <label class="casilla"><input type="checkbox" id="chk-edad"><span>Tengo 14 años o más.</span></label>
-                <label class="casilla"><input type="checkbox" id="chk-legal"><span>He leído y acepto los <a href="terminos.html" target="_blank" rel="noopener">Términos</a> y la <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>
+                <label class="casilla"><input type="checkbox" id="chk-legal"><span>He leído y acepto los <a href="legal.md" data-legal="terminos">Términos</a> y la <a href="legal.md" data-legal="privacidad">Política de privacidad</a>.</span></label>
                 <p class="nota-alfa"><strong>Versión alfa.</strong> Todo puede cambiar, y las cuentas también. Si algún día se unifican con las de La Intersección, la tuya podría cambiar.</p>
                 <button class="boton" type="submit" id="btn-crear">Empezar a jugar</button>
                 <button class="boton-claro cierra-modal" type="button">Ahora no</button>
@@ -392,8 +397,8 @@ textarea.campo { resize: vertical; }
 
     <footer class="pie">
         <button class="enlace" type="button" id="btn-opiniones">Opiniones y mensajes</button>
-        <a class="enlace" href="terminos.html">Términos</a>
-        <a class="enlace" href="privacidad.html">Privacidad</a>
+        <a class="enlace" href="legal.md" data-legal="terminos">Términos</a>
+        <a class="enlace" href="legal.md" data-legal="privacidad">Privacidad</a>
     </footer>
 </main>
 
@@ -417,7 +422,7 @@ textarea.campo { resize: vertical; }
         <tr><td><strong>Sin categoría</strong></td><td>3 puntos</td></tr>
     </table>
     <p>Hay dos retos por semana. En los de 2 y 3 puntos puede haber una pista opcional: abrirla te cuesta 1 punto. Si hay pista y fallas a la primera, se abre sola y tienes una segunda oportunidad que vale 1 punto. Al compartir se indica si la has usado.</p>
-    <p>El ranking se reinicia cada mes, y puedes ver también los meses anteriores y el total acumulado.</p>
+    <p>El ranking se reinicia cada mes, y puedes ver también los meses anteriores y el total acumulado. Cada reto puntúa durante los 7 días siguientes a su fecha; después puedes seguir jugándolo, pero ya no suma puntos.</p>
     <div class="confirma-acc" style="margin:0 0 .5rem">
         <button class="boton" type="button" id="btn-practica">Probar uno de práctica</button>
         <button class="boton-claro cierra-info" type="button">Ir al reto</button>
@@ -449,6 +454,13 @@ textarea.campo { resize: vertical; }
     <div id="otros" hidden><div id="lista-otros"></div></div>
 </dialog>
 
+<dialog id="legal" class="panel" aria-labelledby="legal-titulo">
+    <button class="boton-claro cierra-legal modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
+    <h2 id="legal-titulo" style="margin-bottom:.5rem"></h2>
+    <div id="legal-cuerpo" class="legal-cuerpo"></div>
+    <button class="boton cierra-legal" type="button" style="margin-top:1rem">Cerrar</button>
+</dialog>
+
 <dialog id="opiniones" class="panel" aria-labelledby="op-titulo">
     <button class="boton-claro cierra-op modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
     <h2 id="op-titulo" style="margin-bottom:.75rem">Opiniones y mensajes</h2>
@@ -466,7 +478,7 @@ textarea.campo { resize: vertical; }
         <label class="etiqueta" for="op-email">Email (opcional, solo si quieres respuesta)</label>
         <input class="campo" id="op-email" type="email" maxlength="120" autocomplete="email">
         <div class="trampa" aria-hidden="true"><label>No rellenar <input id="op-web" tabindex="-1" autocomplete="off"></label></div>
-        <p class="nota-alfa">Guardamos tu mensaje, y tu email si lo escribes, solo para atenderlo. Más información en la <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</p>
+        <p class="nota-alfa">Guardamos tu mensaje, y tu email si lo escribes, solo para atenderlo. Más información en la <a href="legal.md" data-legal="privacidad">Política de privacidad</a>.</p>
         <button class="boton" type="submit" id="btn-op">Enviar</button>
     </form>
 </dialog>
@@ -529,6 +541,14 @@ const NIVELES = {
 };
 
 const COMPLEJIDAD = { facil: 'fácil', media: 'media', dificil: 'difícil' };
+
+/* Un reto puntúa durante los 7 días siguientes a su fecha; después puedes jugarlo, pero no suma nada.
+   Tiene que coincidir con el "7" de actualizacion_plazo.sql. */
+const MARGEN_DIAS = 7;
+function esArchivo(r) {
+    const hoy = new Date(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' }) + 'T12:00:00');
+    return Math.round((hoy - new Date(r.fecha + 'T12:00:00')) / 86400000) > MARGEN_DIAS;
+}
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -595,6 +615,56 @@ async function cargarProximo() {
     pintarProximo();
 }
 
+/* Textos legales: se leen de legal.md (secciones "# Título {#id}") y se enseñan en una ventana */
+let LEGAL = null;
+async function cargarLegal() {
+    if (LEGAL) return LEGAL;
+    const r = await fetch('legal.md', { cache: 'no-cache' });
+    if (!r.ok) throw new Error('legal.md ' + r.status);
+    const out = {};
+    (await r.text()).split(/^# /m).slice(1).forEach(b => {
+        const nl = b.indexOf('\n'), m = b.slice(0, nl).trim().match(/^(.*?)\s*\{#(\w+)\}$/);
+        if (m) out[m[2]] = { titulo: m[1], cuerpo: b.slice(nl + 1) };
+    });
+    LEGAL = out;
+    return out;
+}
+function mdAHtml(md) {
+    const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const enl = (m, txt, url) => url[0] === '#' ? `<a href="legal.md" data-legal="${url.slice(1)}">${txt}</a>`
+        : /^https?:/.test(url) ? `<a href="${url}" target="_blank" rel="noopener">${txt}</a>`
+        : /^mailto:/.test(url) ? `<a href="${url}">${txt}</a>` : txt;
+    const inline = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, enl);
+    const out = []; let lista = false, par = [];
+    const cierra = () => {
+        if (par.length) { out.push('<p>' + inline(par.join(' ')) + '</p>'); par = []; }
+        if (lista) { out.push('</ul>'); lista = false; }
+    };
+    for (const l of md.split('\n')) {
+        if (/^## /.test(l)) { cierra(); out.push('<h3>' + inline(l.slice(3)) + '</h3>'); }
+        else if (/^- /.test(l)) { if (par.length) cierra(); if (!lista) { out.push('<ul>'); lista = true; } out.push('<li>' + inline(l.slice(2)) + '</li>'); }
+        else if (!l.trim()) cierra();
+        else { if (lista) cierra(); par.push(l.trim()); }
+    }
+    cierra();
+    return out.join('\n');
+}
+async function abrirLegal(id) {
+    const d = $('#legal');
+    $('#legal-titulo').textContent = ''; $('#legal-cuerpo').textContent = 'Cargando…';
+    if (!d.open) d.showModal();
+    try {
+        const sec = (await cargarLegal())[id];
+        if (!sec) throw new Error('sin sección');
+        $('#legal-titulo').textContent = sec.titulo;
+        $('#legal-cuerpo').innerHTML = mdAHtml(sec.cuerpo);
+        d.scrollTop = 0;
+    } catch (e) {
+        $('#legal-cuerpo').innerHTML = '<p>No se ha podido cargar este texto. Prueba de nuevo, o escribe a <a href="mailto:interseccion@proton.me">interseccion@proton.me</a>.</p>';
+    }
+}
+
 /* Opiniones y mensajes */
 async function enviarOpinion(ev) {
     ev.preventDefault();
@@ -630,6 +700,7 @@ function abrirConfirmacion(eleccion) {
     $('#confirmar-texto').textContent = !segunda ? 'Solo tienes un intento y no se puede cambiar después.' + repasa
         : S.fallos.has(r.id) ? 'Es tu segunda y última oportunidad: si fallas, se revela la respuesta.' + repasa
         : 'Si fallas, tendrás una segunda oportunidad con la pista, pero acertar solo valdrá 1 punto.' + repasa;
+    if (esArchivo(r)) $('#confirmar-texto').textContent += ' Recuerda: este reto ya no puntúa y no suma puntos.';
     $('#confirmar-elegido').textContent = `«${r.elementos[eleccion]}»`;
     $('#confirmar').showModal();
 }
@@ -929,7 +1000,9 @@ function pintarReto() {
     $('#elementos').replaceChildren(...r.elementos.map(crearItem));
     const segunda = !S.practica && r.tiene_pista && nivel.puntos >= 2;
     $('.instruccion').textContent = 'Hay un elemento que no encaja con los demás. Márcalo y pulsa Comprobar. ' + (segunda
-        ? 'Si fallas, tendrás una segunda oportunidad con pista, pero valdrá solo 1 punto.' : 'Solo tienes un intento.');
+        ? 'Si fallas, tendrás una segunda oportunidad con pista, pero valdrá solo 1 punto.' : 'Solo tienes un intento.')
+        + (!S.practica && esArchivo(r) && !S.intentos.has(r.id)
+            ? ' Este reto ya no puntúa: puedes jugarlo, pero no suma puntos.' : '');
     $('#proximo').hidden = true;
     const fallo = S.fallos.get(r.id);
     if (segunda && fallo != null && !S.intentos.has(r.id)) {
@@ -954,7 +1027,7 @@ function pintarReto() {
             intruso_indice: previo.intruso_indice,
             conexion_intrusa: previo.conexion_intrusa,
             uso_pista: previo.uso_pista, n_pista: previo.n_pista, n_sin_pista: previo.n_sin_pista,
-            intento_numero: previo.intento_numero, primer_fallo: previo.primer_fallo_indice
+            intento_numero: previo.intento_numero, primer_fallo: previo.primer_fallo_indice, de_archivo: previo.de_archivo
         }, previo.eleccion_indice, false);
     }
 }
@@ -1032,6 +1105,7 @@ function pintarResultado(res, nivel, textoIntruso) {
         const dos = res.intento_numero === 2;
         const pts = dos ? 1 : nivel.puntos - (res.uso_pista ? 1 : 0);
         p.textContent = `+${plural(pts, 'punto', 'puntos')}` + (dos ? ' (a la segunda)' : (res.uso_pista ? ' (1 menos por la pista)' : ''));
+        if (res.de_archivo) p.textContent = 'Este reto ya no puntúa, así que no suma puntos.';
         box.appendChild(p);
     }
     if (S.actual.tiene_pista && !S.practica && res.n_pista != null) {
@@ -1126,7 +1200,7 @@ async function comprobar(ev) {
             reto_id: S.actual.id, eleccion_indice: eleccion, acertado: res.acertado,
             intruso_indice: res.intruso_indice, conexion_intrusa: res.conexion_intrusa,
             uso_pista: res.uso_pista, n_pista: res.n_pista, n_sin_pista: res.n_sin_pista,
-            intento_numero: res.intento_numero, primer_fallo_indice: S.fallos.get(S.actual.id)
+            intento_numero: res.intento_numero, primer_fallo_indice: S.fallos.get(S.actual.id), de_archivo: res.de_archivo
         });
         S.perfil.puntos_totales = res.puntos_totales;
         pintarCuenta();
@@ -1194,12 +1268,13 @@ async function compartir(btn) {
     const nivel = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre;
     const comp = COMPLEJIDAD[r.complejidad] ? `, ${COMPLEJIDAD[r.complejidad]}` : '';
     const extra = r.tiene_pista ? (i.uso_pista ? ', con pista 💡' : ', sin usar la pista') : '';
+    const arch = i.de_archivo ? ', fuera de plazo' : '';
     const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
     const cuando = r.fecha === hoy ? 'hoy' : `en el reto del ${fechaCorta(r.fecha)}`;
     const enlace = location.href.split('#')[0];
     const texto = i.acertado
-        ? `He conseguido un Resto Cero ${cuando}${i.intento_numero === 2 ? ' a la segunda' : ''} ✅ (${nivel}${comp}${extra}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
-        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}${comp}${extra}).\n¿Serías capaz tú?\n${enlace}`;
+        ? `He conseguido un Resto Cero ${cuando}${i.intento_numero === 2 ? ' a la segunda' : ''} ✅ (${nivel}${comp}${extra}${arch}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
+        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}${comp}${extra}${arch}).\n¿Serías capaz tú?\n${enlace}`;
     try {
         // Menú nativo del móvil (WhatsApp, Telegram, Mensajes...): el enlace va aparte del texto
         const datos = { title: 'Resto cero', text: texto.slice(0, texto.lastIndexOf('\n')), url: enlace };
@@ -1248,6 +1323,12 @@ function conectarEventos() {
     $$('.cierra-op').forEach(b => b.addEventListener('click', () => $('#opiniones').close()));
     $('#opiniones').addEventListener('click', ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });
     $('#form-op').addEventListener('submit', enviarOpinion);
+    document.addEventListener('click', ev => {
+        const a = ev.target.closest('a[data-legal]');
+        if (a) { ev.preventDefault(); abrirLegal(a.dataset.legal); }
+    });
+    $$('.cierra-legal').forEach(b => b.addEventListener('click', () => $('#legal').close()));
+    $('#legal').addEventListener('click', ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });
     $('#rank-vista').addEventListener('change', mostrarRanking);
     $('#btn-borrar').addEventListener('click', () => $('#borrar').showModal());
     $('#btn-no-borrar').addEventListener('click', () => $('#borrar').close());
