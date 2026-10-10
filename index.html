@@ -441,6 +441,8 @@ const NIVELES = {
     sin_pista:    { nombre: 'Sin categoría',       puntos: 3 }
 };
 
+const COMPLEJIDAD = { facil: 'fácil', media: 'media', dificil: 'difícil' };
+
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
@@ -721,7 +723,7 @@ function pintarReto() {
     const hayCategoria = r.dificultad === 'con_pista' && r.categoria;
     divisor.textContent = hayCategoria ? r.categoria : '?';
     divisor.classList.toggle('es-incognita', !hayCategoria);
-    $('#divisor-nivel').textContent = S.practica ? 'Práctica. No suma puntos.' : `${nivel.nombre}. Vale ${plural(nivel.puntos, 'punto', 'puntos')}.`;
+    $('#divisor-nivel').textContent = S.practica ? 'Práctica. No suma puntos.' : `${nivel.nombre}. Vale ${plural(nivel.puntos, 'punto', 'puntos')}.` + (COMPLEJIDAD[r.complejidad] ? ` Dificultad: ${COMPLEJIDAD[r.complejidad]}.` : '');
 
     const enlace = $('#divisor-enlace');
     enlace.replaceChildren();
@@ -767,7 +769,7 @@ function pintarOtros() {
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'fila';
         const f = document.createElement('span'); f.className = 'fila-fecha'; f.textContent = fechaCorta(r.fecha);
-        const n = document.createElement('span'); n.className = 'fila-nivel'; n.textContent = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre;
+        const n = document.createElement('span'); n.className = 'fila-nivel'; n.textContent = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre + (COMPLEJIDAD[r.complejidad] ? `, ${COMPLEJIDAD[r.complejidad]}` : '');
         const e = document.createElement('span'); e.className = 'fila-estado';
         const i = S.intentos.get(r.id);
         e.textContent = i ? (i.acertado ? 'Acertado' : 'Fallado') : 'Sin responder';
@@ -980,15 +982,18 @@ async function compartir(btn) {
     const r = S.actual, i = S.intentos.get(r.id);
     if (!i) return;
     const nivel = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre;
+    const comp = COMPLEJIDAD[r.complejidad] ? `, ${COMPLEJIDAD[r.complejidad]}` : '';
     const extra = r.tiene_pista ? (i.uso_pista ? ', con pista 💡' : ', sin usar la pista') : '';
     const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
     const cuando = r.fecha === hoy ? 'hoy' : `en el reto del ${fechaCorta(r.fecha)}`;
     const enlace = location.href.split('#')[0];
     const texto = i.acertado
-        ? `He conseguido un Resto Cero ${cuando} ✅ (${nivel}${extra}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
-        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}${extra}).\n¿Serías capaz tú?\n${enlace}`;
+        ? `He conseguido un Resto Cero ${cuando} ✅ (${nivel}${comp}${extra}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
+        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}${comp}${extra}).\n¿Serías capaz tú?\n${enlace}`;
     try {
-        if (navigator.share) { await navigator.share({ text: texto }); return; }
+        // Menú nativo del móvil (WhatsApp, Telegram, Mensajes...): el enlace va aparte del texto
+        const datos = { title: 'Resto cero', text: texto.slice(0, texto.lastIndexOf('\n')), url: enlace };
+        if (navigator.share && (!navigator.canShare || navigator.canShare(datos))) { await navigator.share(datos); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(texto); }
     catch (e) { window.prompt('Copia tu resultado:', texto); return; }
