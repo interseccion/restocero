@@ -246,6 +246,9 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
 #btn-confirmar { background: var(--rojo); }
 #btn-confirmar:hover { background: #A82620; }
 .resultado .boton-claro { margin-right: .5rem; }
+.pista { margin: 0 0 1.25rem; padding: .75rem 1rem; border-left: 4px solid #E3B800; background: rgba(255, 225, 77, .35); }
+.pista p { margin: 0; }
+.estadistica-pista { color: var(--grafito); font-size: .95rem; }
 </style>
 </head>
 <body>
@@ -269,6 +272,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
         <div class="cab-links">
             <button class="enlace" type="button" id="btn-info">Cómo se juega</button>
             <button class="enlace" type="button" id="btn-podio">Podio</button>
+            <button class="enlace" type="button" id="btn-archivo">Anteriores</button>
             <button class="enlace" type="button" id="btn-abrir-modal" hidden>Crear cuenta o entrar</button>
         </div>
     </header>
@@ -313,6 +317,7 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
         <section id="reto" aria-labelledby="reto-fecha">
             <h2 id="reto-fecha" class="reto-fecha"></h2>
             <p class="instruccion">Hay un elemento que no encaja con los demás. Márcalo y pulsa Comprobar. Solo tienes un intento.</p>
+            <div class="pista" id="pista" hidden></div>
 
             <form id="form-reto" class="galera" novalidate>
                 <fieldset class="dividendo">
@@ -356,11 +361,11 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
         <li>Si aciertas, el resto queda en cero y sumas puntos.</li>
     </ol>
     <table class="tabla-puntos">
-        <tr><td><strong>Con pista</strong></td><td>1 punto</td></tr>
+        <tr><td><strong>Con categoría</strong></td><td>1 punto</td></tr>
         <tr><td><strong>De una intersección</strong></td><td>2 puntos</td></tr>
-        <tr><td><strong>Sin pista</strong></td><td>3 puntos</td></tr>
+        <tr><td><strong>Sin categoría</strong></td><td>3 puntos</td></tr>
     </table>
-    <p>Hay dos retos por semana.</p>
+    <p>Hay dos retos por semana. En los de 2 y 3 puntos puede haber una pista opcional: abrirla te cuesta 1 punto, y al compartir se indica si la has usado.</p>
     <div class="confirma-acc" style="margin:0 0 .5rem">
         <button class="boton" type="button" id="btn-practica">Probar uno de práctica</button>
         <button class="boton-claro cierra-info" type="button">Ir al reto</button>
@@ -385,6 +390,13 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
     </div>
 </dialog>
 
+<dialog id="archivo" class="panel" aria-labelledby="archivo-titulo">
+    <button class="boton-claro cierra-archivo modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
+    <h2 id="archivo-titulo" style="margin-bottom:.75rem">Retos anteriores</h2>
+    <p class="vacio" id="otros-vacio" hidden>Todavía no hay retos anteriores.</p>
+    <div id="otros" hidden><div id="lista-otros"></div></div>
+</dialog>
+
 <dialog id="podio" class="panel" aria-labelledby="podio-titulo">
     <button class="boton-claro cierra-podio modal-x" type="button" aria-label="Cerrar">&#x2715;</button>
     <h2 id="podio-titulo">Podio</h2>
@@ -396,10 +408,6 @@ h1 { font-family: var(--mano); font-size: clamp(4rem, 21vw, 6.5rem); letter-spac
     <h3>Ranking</h3>
     <ol class="ranking" id="ranking"></ol>
     <p class="vacio" id="ranking-vacio" hidden>Todavía no hay nadie en el ranking. El primer acierto se lleva el primer puesto.</p>
-    <section id="otros" hidden>
-        <h3>Otros retos</h3>
-        <div id="lista-otros"></div>
-    </section>
     <details class="cuenta">
             <summary id="cuenta-resumen"></summary>
             <div class="cuenta-cuerpo">
@@ -428,9 +436,9 @@ const INTERSECCION_URL  = 'https://interseccion.github.io/';
 
 const CLAVE_TOKEN = 'restocero_token';
 const NIVELES = {
-    con_pista:    { nombre: 'Con pista',           puntos: 1 },
+    con_pista:    { nombre: 'Con categoría',       puntos: 1 },
     interseccion: { nombre: 'De una intersección', puntos: 2 },
-    sin_pista:    { nombre: 'Sin pista',           puntos: 3 }
+    sin_pista:    { nombre: 'Sin categoría',       puntos: 3 }
 };
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -440,7 +448,7 @@ const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
 
 let db = null;
-const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null };
+const S = { token: null, perfil: null, retos: [], intentos: new Map(), actual: null, enviando: false, practica: false, antes: null, pistas: new Map(), pendiente: null };
 const RETO_TUTORIAL = {
     id: 'tutorial', dificultad: 'con_pista', categoria: 'Ríos de España', misterio_relacionado: null,
     elementos: ['Ebro', 'Duero', 'Tajo', 'Sena', 'Guadalquivir'], intruso: 3,
@@ -472,6 +480,58 @@ function abrirInfo() {
 }
 function abrirPodio() { pintarStats(); const m = $('#podio'); if (!m.open) m.showModal(); }
 function cerrarPodio() { const m = $('#podio'); if (m.open) m.close(); }
+function abrirArchivo() { const m = $('#archivo'); if (!m.open) m.showModal(); }
+function cerrarArchivo() { const m = $('#archivo'); if (m.open) m.close(); }
+
+function abrirConfirmacion(eleccion) {
+    $('#confirmar-elegido').textContent = `«${S.actual.elementos[eleccion]}»`;
+    $('#confirmar').showModal();
+}
+/* Si respondiste sin cuenta, al crearla se recupera tu elección y se te pide confirmarla */
+function restaurarPendiente() {
+    const p = S.pendiente; S.pendiente = null;
+    if (!p || S.intentos.has(p.retoId) || !S.retos.some(r => r.id === p.retoId)) return;
+    elegirReto(p.retoId);
+    const inp = $$('input[name="elem"]')[p.eleccion];
+    if (!inp) return;
+    inp.checked = true;
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+    abrirConfirmacion(p.eleccion);
+}
+
+function pintarPista() {
+    const box = $('#pista'), r = S.actual;
+    box.replaceChildren();
+    const nivel = NIVELES[r.dificultad] || NIVELES.con_pista;
+    if (S.practica || !r.tiene_pista || nivel.puntos < 2) { box.hidden = true; return; }
+    const texto = S.pistas.get(r.id);
+    if (texto) {
+        const p = document.createElement('p');
+        const b = document.createElement('strong'); b.textContent = 'Pista: ';
+        p.append(b, texto); box.appendChild(p); box.hidden = false; return;
+    }
+    if (S.intentos.has(r.id)) { box.hidden = true; return; }
+    box.hidden = false;
+    const base = 'Ver una pista (cuesta 1 punto)';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'boton-claro'; b.textContent = base;
+    let armado = false, t = null;
+    b.addEventListener('click', async () => {
+        if (!S.token) { abrirModal(); return; }
+        if (!armado) {
+            armado = true; b.textContent = '¿Seguro? Pulsa otra vez: perderás 1 punto';
+            t = setTimeout(() => { armado = false; b.textContent = base; }, 5000);
+            return;
+        }
+        clearTimeout(t); b.disabled = true;
+        try {
+            const [fila] = await rpc('pedir_pista', { p_token: S.token, p_reto_id: r.id });
+            S.pistas.set(r.id, fila.pista);
+            if (S.actual && S.actual.id === r.id) pintarPista();
+        } catch (e) { avisar(mensajeError(e)); b.disabled = false; armado = false; b.textContent = base; }
+    });
+    box.appendChild(b);
+}
 
 function pintarStats() {
     $('#stats').hidden = !S.perfil;
@@ -491,7 +551,7 @@ function cerrarModal() { const m = $('#modal'); if (m.open) m.close(); }
 
 /* Sin cuenta: se ve el reto y el ranking, y se pide el nombre al comprobar */
 async function entrarInvitado() {
-    S.token = null; S.perfil = null; S.intentos = new Map();
+    S.token = null; S.perfil = null; S.intentos = new Map(); S.pistas = new Map();
     try {
         const [retos, ranking] = await Promise.all([
             leer('retos_publico', q => q.order('fecha', { ascending: false })),
@@ -501,7 +561,7 @@ async function entrarInvitado() {
         pantalla('juego'); pintarCuenta(); pintarRanking(ranking);
         $('#sin-retos').hidden = retos.length > 0;
         $('#reto').hidden = retos.length === 0;
-        if (retos.length) elegirReto(retos[0].id); else $('#otros').hidden = true;
+        if (retos.length) elegirReto(retos[0].id); else { $('#otros').hidden = true; $('#otros-vacio').hidden = false; }
     } catch (e) {
         pantalla('juego'); pintarCuenta(); avisar(mensajeError(e));
     }
@@ -567,11 +627,12 @@ async function iniciar() {
 }
 
 async function entrarAlJuego() {
-    const [perfil, retos, intentos, ranking] = await Promise.all([
+    const [perfil, retos, intentos, ranking, pistas] = await Promise.all([
         rpc('mi_perfil', { p_token: S.token }),
         leer('retos_publico', q => q.order('fecha', { ascending: false })),
         rpc('mis_intentos', { p_token: S.token }),
-        leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10))
+        leer('ranking_publico', q => q.order('puntos_totales', { ascending: false }).limit(10)),
+        rpc('mis_pistas', { p_token: S.token }).catch(() => [])
     ]);
 
     if (!perfil.length) {
@@ -584,6 +645,7 @@ async function entrarAlJuego() {
     S.perfil = perfil[0];
     S.retos = retos;
     S.intentos = new Map(intentos.map(i => [i.reto_id, i]));
+    S.pistas = new Map(pistas.map(x => [x.reto_id, x.pista]));
     pantalla('juego');
     cerrarModal();
     pintarCuenta();
@@ -594,10 +656,11 @@ async function entrarAlJuego() {
     if (retos.length) {
         const pendiente = retos.find(r => !S.intentos.has(r.id));
         elegirReto((pendiente || retos[0]).id);
-        if (!pendiente) abrirPodio();
+        if (!pendiente && !S.pendiente) abrirPodio();
     } else {
-        $('#otros').hidden = true;
+        $('#otros').hidden = true; $('#otros-vacio').hidden = false;
     }
+    restaurarPendiente();
 }
 
 /* ───────── Pintar ───────── */
@@ -674,6 +737,7 @@ function pintarReto() {
     }
 
     $('#elementos').replaceChildren(...r.elementos.map(crearItem));
+    pintarPista();
 
     // Estado inicial limpio
     const cifra = $('#resto-cifra');
@@ -689,7 +753,8 @@ function pintarReto() {
         revelar({
             acertado: previo.acertado,
             intruso_indice: previo.intruso_indice,
-            conexion_intrusa: previo.conexion_intrusa
+            conexion_intrusa: previo.conexion_intrusa,
+            uso_pista: previo.uso_pista, n_pista: previo.n_pista, n_sin_pista: previo.n_sin_pista
         }, previo.eleccion_indice, false);
     }
 }
@@ -697,6 +762,7 @@ function pintarReto() {
 function pintarOtros() {
     const otros = S.retos.filter(r => r.id !== S.actual.id);
     $('#otros').hidden = otros.length === 0;
+    $('#otros-vacio').hidden = otros.length > 0;
     $('#lista-otros').replaceChildren(...otros.map(r => {
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'fila';
@@ -706,7 +772,7 @@ function pintarOtros() {
         const i = S.intentos.get(r.id);
         e.textContent = i ? (i.acertado ? 'Acertado' : 'Fallado') : 'Sin responder';
         b.append(f, n, e);
-        b.addEventListener('click', () => { cerrarPodio(); elegirReto(r.id); $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' }); });
+        b.addEventListener('click', () => { cerrarPodio(); cerrarArchivo(); elegirReto(r.id); $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' }); });
         return b;
     }));
 }
@@ -762,8 +828,14 @@ function pintarResultado(res, nivel, textoIntruso) {
     if (res.acertado && !S.practica) {
         const p = document.createElement('p');
         p.className = 'puntos-ganados';
-        p.textContent = `+${plural(nivel.puntos, 'punto', 'puntos')}`;
+        const pts = nivel.puntos - (res.uso_pista ? 1 : 0);
+        p.textContent = `+${plural(pts, 'punto', 'puntos')}` + (res.uso_pista ? ' (1 menos por la pista)' : '');
         box.appendChild(p);
+    }
+    if (S.actual.tiene_pista && !S.practica && res.n_pista != null) {
+        const e = document.createElement('p'); e.className = 'estadistica-pista';
+        e.textContent = `💡 ${plural(res.n_pista, 'persona ha usado', 'personas han usado')} la pista; ${res.n_sin_pista} no.`;
+        box.appendChild(e);
     }
     if (S.practica) {
         const b = document.createElement('button');
@@ -808,12 +880,12 @@ function practicar() {
 function pedirConfirmacion(ev) {
     ev.preventDefault();
     if (S.practica) { practicar(); return; }
-    if (!S.token) { abrirModal(); return; }
     if (S.enviando) return;
     const marcado = $('input[name="elem"]:checked');
     if (!marcado) return;
-    $('#confirmar-elegido').textContent = `«${S.actual.elementos[Number(marcado.value)]}»`;
-    $('#confirmar').showModal();
+    const eleccion = Number(marcado.value);
+    if (!S.token) { S.pendiente = { retoId: S.actual.id, eleccion }; abrirModal(); return; }
+    abrirConfirmacion(eleccion);
 }
 
 async function comprobar(ev) {
@@ -842,10 +914,12 @@ async function comprobar(ev) {
 
         S.intentos.set(S.actual.id, {
             reto_id: S.actual.id, eleccion_indice: eleccion, acertado: res.acertado,
-            intruso_indice: res.intruso_indice, conexion_intrusa: res.conexion_intrusa
+            intruso_indice: res.intruso_indice, conexion_intrusa: res.conexion_intrusa,
+            uso_pista: res.uso_pista, n_pista: res.n_pista, n_sin_pista: res.n_sin_pista
         });
         S.perfil.puntos_totales = res.puntos_totales;
         pintarCuenta();
+        pintarPista();
         revelar(res, eleccion, true);
         pintarOtros();
 
@@ -906,12 +980,13 @@ async function compartir(btn) {
     const r = S.actual, i = S.intentos.get(r.id);
     if (!i) return;
     const nivel = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre;
+    const extra = r.tiene_pista ? (i.uso_pista ? ', con pista 💡' : ', sin usar la pista') : '';
     const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
     const cuando = r.fecha === hoy ? 'hoy' : `en el reto del ${fechaCorta(r.fecha)}`;
     const enlace = location.href.split('#')[0];
     const texto = i.acertado
-        ? `He conseguido un Resto Cero ${cuando} ✅ (${nivel}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
-        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}).\n¿Serías capaz tú?\n${enlace}`;
+        ? `He conseguido un Resto Cero ${cuando} ✅ (${nivel}${extra}).\n¿Crees que eres capaz de hacerlo tú también?\n${enlace}`
+        : `No he conseguido el Resto Cero ${cuando} ❌ (${nivel}${extra}).\n¿Serías capaz tú?\n${enlace}`;
     try {
         if (navigator.share) { await navigator.share({ text: texto }); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
@@ -951,6 +1026,9 @@ function conectarEventos() {
     $('#btn-info').addEventListener('click', abrirInfo);
     $('#btn-practica').addEventListener('click', empezarPractica);
     $('#btn-podio').addEventListener('click', abrirPodio);
+    $('#btn-archivo').addEventListener('click', abrirArchivo);
+    $$('.cierra-archivo').forEach(b => b.addEventListener('click', cerrarArchivo));
+    $('#archivo').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarArchivo(); });
     $$('.cierra-podio').forEach(b => b.addEventListener('click', cerrarPodio));
     $('#podio').addEventListener('click', ev => { if (ev.target === ev.currentTarget) cerrarPodio(); });
     $$('.cierra-info').forEach(b => b.addEventListener('click', () => $('#info').close()));
