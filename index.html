@@ -290,6 +290,7 @@ dialog#legal { width: min(42rem, calc(100% - 2rem)); }
 .legal-cuerpo ul { padding-left: 1.25rem; margin: 0 0 .6rem; }
 .legal-cuerpo h3 { margin-top: 1.5rem; }
 .legal-cuerpo a { color: inherit; text-underline-offset: .2em; }
+.fila.fuera .fila-estado { color: var(--grafito); font-style: italic; }
 </style>
 </head>
 <body>
@@ -494,6 +495,7 @@ dialog#legal { width: min(42rem, calc(100% - 2rem)); }
     </div>
     <h3>Ranking</h3>
     <select class="campo" id="rank-vista" aria-label="Elegir ranking"></select>
+    <p class="vacio" id="rank-nota" hidden>Este ranking todavía puede cambiar: los retos de final de mes puntúan hasta 7 días después de su fecha.</p>
     <ol class="ranking" id="ranking"></ol>
     <p class="vacio" id="ranking-vacio" hidden>Todavía no hay nadie en el ranking. El primer acierto se lleva el primer puesto.</p>
     <details class="cuenta">
@@ -899,16 +901,23 @@ function pintarCuenta() {
 }
 
 const claveMes = iso => iso.slice(0, 7) + '-01';
+/* Un mes ya terminado sigue "provisional" mientras queden retos de su final dentro del plazo de puntos */
+function mesProvisional(clave, hoyIso) {
+    if (clave === claveMes(hoyIso)) return false;
+    const fin = new Date(clave + 'T12:00:00'); fin.setMonth(fin.getMonth() + 1); fin.setDate(fin.getDate() - 1 + MARGEN_DIAS);
+    return new Date(hoyIso + 'T12:00:00') <= fin;
+}
 const nombreMes = clave => new Date(clave + 'T12:00:00').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
 function prepararRanking() {
     const sel = $('#rank-vista');
-    const hoy = claveMes(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' }));
+    const hoyIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+    const hoy = claveMes(hoyIso);
     const meses = [...new Set([hoy, ...S.retos.map(r => claveMes(r.fecha))])].sort().reverse();
     const previo = sel.value;
     const opciones = meses.map(m => {
         const o = document.createElement('option');
-        o.value = m; o.textContent = m === hoy ? `Este mes (${nombreMes(m)})` : nombreMes(m);
+        o.value = m; o.textContent = m === hoy ? `Este mes (${nombreMes(m)})` : nombreMes(m) + (mesProvisional(m, hoyIso) ? ' (provisional)' : '');
         return o;
     });
     const tot = document.createElement('option');
@@ -920,6 +929,8 @@ function prepararRanking() {
 
 async function mostrarRanking() {
     const sel = $('#rank-vista'), v = sel.value;
+    const hoyIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+    $('#rank-nota').hidden = !(v !== 'total' && mesProvisional(v, hoyIso));
     if (v === 'total') { pintarRanking(S.rankTotal); return; }
     try {
         if (!S.rankMes.has(v)) {
@@ -1043,7 +1054,10 @@ function pintarOtros() {
         const n = document.createElement('span'); n.className = 'fila-nivel'; n.textContent = (NIVELES[r.dificultad] || NIVELES.con_pista).nombre + (COMPLEJIDAD[r.complejidad] ? `, ${COMPLEJIDAD[r.complejidad]}` : '');
         const e = document.createElement('span'); e.className = 'fila-estado';
         const i = S.intentos.get(r.id);
-        e.textContent = i ? (i.acertado ? 'Acertado' : 'Fallado') : 'Sin responder';
+        const fuera = esArchivo(r);
+        e.textContent = i ? (i.acertado ? 'Acertado' : 'Fallado') + (i.de_archivo ? ', sin puntos' : '')
+            : 'Sin responder' + (fuera ? ', ya no puntúa' : '');
+        if (fuera) b.classList.add('fuera');
         b.append(f, n, e);
         b.addEventListener('click', () => { cerrarPodio(); cerrarArchivo(); elegirReto(r.id); $('#reto').scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth' }); });
         return b;
